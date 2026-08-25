@@ -1,0 +1,13 @@
+﻿# Vercel builds from source, so the local build output is dead weight - it was
+# roughly 200MB of the 507MB upload that timed out.
+.next
+node_modules
+.git
+
+# Source footage the hero frames were extracted from. 176MB, never served.
+public/videos
+
+# One-off image/video processing scripts. Not part of the app.
+scripts
+/Video Project 1.mp4
+/Video_Project_1_frames.zip

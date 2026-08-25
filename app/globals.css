@@ -1,0 +1,189 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #07090b;
+  --foreground: #f7f4ee;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  background-color: var(--background);
+  color: var(--foreground);
+  /* Full step. At 80% every rem-based size on the site was a fifth smaller
+     than designed, which is why copy needed zoom to read. */
+  font-size: 100%;
+}
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-scrolling iframe {
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Shade pool
+   White type sitting straight on the mid-tone ambient ground disappears. This
+   is what replaces the black card panels below the hero: a soft, edgeless pool
+   of shade behind a block of type — light falling on a wall, no border, no
+   radius, and the moving ground still visible through it.
+   Used only by the sections below the treatment collection; the hero and the
+   collection are untouched.
+   --------------------------------------------------------------------------- */
+.pool {
+  position: relative;
+  isolation: isolate;
+}
+
+/* Blur only — no paint. Nothing is drawn over the ground, so there is no dark
+   patch to spot; what is already behind the type simply goes out of focus, the
+   way a lens throws a background. Brightness is barely touched (0.9) because a
+   blurred highlight is still a highlight, and the mask feathers the whole thing
+   to nothing well before any edge could show. */
+.pool::before {
+  content: "";
+  position: absolute;
+  inset: -16% -9%;
+  z-index: -1;
+  pointer-events: none;
+
+  backdrop-filter: blur(30px) saturate(1.02) brightness(0.78);
+  -webkit-backdrop-filter: blur(30px) saturate(1.02) brightness(0.78);
+
+  -webkit-mask-image: radial-gradient(
+    64% 68% at 42% 50%,
+    #000 0%,
+    rgba(0, 0, 0, 0.9) 48%,
+    transparent 82%
+  );
+  mask-image: radial-gradient(
+    64% 68% at 42% 50%,
+    #000 0%,
+    rgba(0, 0, 0, 0.9) 48%,
+    transparent 82%
+  );
+}
+
+.pool-center::before {
+  -webkit-mask-image: radial-gradient(
+    60% 66% at 50% 50%,
+    #000 0%,
+    rgba(0, 0, 0, 0.85) 45%,
+    transparent 82%
+  );
+  mask-image: radial-gradient(
+    60% 66% at 50% 50%,
+    #000 0%,
+    rgba(0, 0, 0, 0.85) 45%,
+    transparent 82%
+  );
+}
+
+/* Two shadows, not one: a tight dark halo that lifts the letterforms off
+   whatever sits directly behind them, and a wide soft one for depth. A single
+   wide shadow was too diffuse to stop copy dissolving into the background. */
+.text-shade {
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.75),
+    0 2px 34px rgba(0, 0, 0, 0.6);
+}
+
+.text-shade-strong {
+  text-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.9),
+    0 3px 16px rgba(0, 0, 0, 0.8),
+    0 6px 48px rgba(0, 0, 0, 0.6);
+}
+
+/* Caption dock / protocol sheet entrance */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* For content that changes while the user waits on it — a carousel caption
+   swapping cards. Half a second there reads as lag, not polish. */
+.animate-fadeInFast {
+  animation: fadeIn 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Custom cinematic animations */
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(0.98);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes scroll-pill {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  75% {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-scroll-pill {
+  animation: scroll-pill 2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+/* Hide scrollbars for clean full-bleed cinematic aesthetic while preserving scrollability */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #07090b;
+}
+::-webkit-scrollbar-thumb {
+  background: #1c2630;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c5a880;
+}
