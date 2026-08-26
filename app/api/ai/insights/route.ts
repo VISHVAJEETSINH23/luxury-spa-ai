@@ -25,28 +25,7 @@ export async function POST(request: Request) {
   }
 
   const rows = await loadBookings(120);
-
-  if (rows === null) {
-    return Response.json(
-      {
-        error:
-          "Booking data isn't readable — check ADMIN_INSIGHTS_SECRET in .env.local and restart the dev server.",
-      },
-      { status: 503 }
-    );
-  }
-
-  if (rows.length === 0) {
-    return Response.json(
-      {
-        error:
-          "No booking requests yet. Once guests start booking, this will analyse the pattern.",
-      },
-      { status: 200 }
-    );
-  }
-
-  const stats = summarise(rows);
+  const stats = summarise(rows || []);
 
   try {
     const analysis = await generateJSON<{

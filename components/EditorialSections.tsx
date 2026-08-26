@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 import ServicesMenu from "@/components/ServicesMenu";
+import SanctuarySuiteTour from "@/components/SanctuarySuiteTour";
+import AromatherapyCustomizer from "@/components/AromatherapyCustomizer";
+import VIPMembershipPass from "@/components/VIPMembershipPass";
+import FrontDeskLiveTicker from "@/components/FrontDeskLiveTicker";
 import ReviewsWall from "@/components/ReviewsWall";
 import BodyPainMapper from "@/components/BodyPainMapper";
 import CoupleExperienceCustomizer from "@/components/CoupleExperienceCustomizer";
@@ -48,6 +52,15 @@ export default function EditorialSections({ onOpenReservation, onOpenAIDoctor }:
 
       {/* 
         ========================================================================
+        0. LIVE FRONT DESK TELEMETRY & SANCTUARY READINESS TICKER
+        ========================================================================
+      */}
+      <div className="relative z-10">
+        <FrontDeskLiveTicker />
+      </div>
+
+      {/* 
+        ========================================================================
         1. COMPLETE ALL-IN-ONE MASTER SERVICES & PRICE MENU (Immediately after hero)
         ========================================================================
       */}
@@ -57,7 +70,16 @@ export default function EditorialSections({ onOpenReservation, onOpenAIDoctor }:
 
       {/* 
         ========================================================================
-        2. INTERACTIVE 3D ANATOMY PAIN MAPPER ("Where does it hurt?")
+        2. INTERACTIVE 360° VIP SANCTUARY SUITE HOTSPOT TOUR
+        ========================================================================
+      */}
+      <section className="relative z-10 pt-12 px-5 sm:px-8 lg:px-12">
+        <SanctuarySuiteTour onOpenReservation={(id) => onOpenReservation(id)} />
+      </section>
+
+      {/* 
+        ========================================================================
+        3. INTERACTIVE 3D ANATOMY PAIN MAPPER ("Where does it hurt?")
         ========================================================================
       */}
       <section className="relative z-10 pt-12 px-5 sm:px-8 lg:px-12">
@@ -66,7 +88,16 @@ export default function EditorialSections({ onOpenReservation, onOpenAIDoctor }:
 
       {/* 
         ========================================================================
-        3. COUPLE SANCTUARY EXPERIENCE CUSTOMIZER
+        4. "BLEND MY OIL" — INTERACTIVE AROMATHERAPY SCENT ATELIER
+        ========================================================================
+      */}
+      <section className="relative z-10 pt-12 px-5 sm:px-8 lg:px-12">
+        <AromatherapyCustomizer onOpenReservation={onOpenReservation} />
+      </section>
+
+      {/* 
+        ========================================================================
+        5. COUPLE SANCTUARY EXPERIENCE CUSTOMIZER
         ========================================================================
       */}
       <section id="couple-suite" className="relative z-10 pt-12 px-5 sm:px-8 lg:px-12 scroll-mt-24">
@@ -75,7 +106,16 @@ export default function EditorialSections({ onOpenReservation, onOpenAIDoctor }:
 
       {/* 
         ========================================================================
-        4. DIGITAL GIFT VOUCHER STUDIO (WhatsApp delivery)
+        6. 3D HOLOGRAPHIC OBSIDIAN VIP MEMBERSHIP PASS
+        ========================================================================
+      */}
+      <section className="relative z-10 pt-12 px-5 sm:px-8 lg:px-12">
+        <VIPMembershipPass onOpenReservation={onOpenReservation} />
+      </section>
+
+      {/* 
+        ========================================================================
+        7. DIGITAL GIFT VOUCHER STUDIO (WhatsApp delivery)
         ========================================================================
       */}
       <section className="relative z-10 pt-12 px-5 sm:px-8 lg:px-12">

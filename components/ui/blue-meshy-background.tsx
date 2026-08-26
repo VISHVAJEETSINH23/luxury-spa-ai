@@ -36,8 +36,8 @@ const SWIRL_TIME_MULT = 5.0;
 // Additional swirl effect modulated by noise.
 const NOISE_SWIRL_FACTOR = 0.2;
 
-// Number of fractal noise octaves in fbm (must be integer).
-const FBM_OCTAVES = 10;
+// Number of fractal noise octaves in fbm (optimized for buttery 60/120fps).
+const FBM_OCTAVES = 4;
 
 ////////////////////////////////////////////////////////////////////////////////
 // DYNAMIC FRAGMENT SHADER BUILDER
@@ -53,7 +53,7 @@ function buildFragmentShader(ramp: [number, number, number][]): string {
 
   return `#version 300 es
 
-precision highp float;
+precision mediump float;
 out vec4 outColor;
 
 uniform vec2 uResolution;
@@ -330,10 +330,14 @@ export default function WavyBackground({
     // Transparent background
     gl.clearColor(0, 0, 0, 0);
 
-    // Resize canvas to fill the viewport (the pattern is cut at viewport
-    // aspect and stretched across the panel — that's the intended look).
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    // Scaled canvas buffer for silky 60/120fps performance
+    const updateCanvasSize = () => {
+      const scale = Math.min(window.devicePixelRatio > 1 ? 0.6 : 0.8, 1);
+      canvas.width = Math.max(320, Math.round(window.innerWidth * scale));
+      canvas.height = Math.max(240, Math.round(window.innerHeight * scale));
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    };
+    updateCanvasSize();
 
     gl.useProgram(program);
 
@@ -418,9 +422,7 @@ export default function WavyBackground({
     document.addEventListener("visibilitychange", onVisibility);
 
     const handleResize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      gl.viewport(0, 0, canvas.width, canvas.height);
+      updateCanvasSize();
       if (animId === null) drawFrame();
     };
     window.addEventListener("resize", handleResize);

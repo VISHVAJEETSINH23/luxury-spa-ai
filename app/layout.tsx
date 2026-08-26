@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
@@ -16,9 +16,50 @@ const jakarta = Plus_Jakarta_Sans({
   display: "swap",
 });
 
+export const viewport: Viewport = {
+  themeColor: "#07090b",
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
-  title: "ALEXA SPA | Luxury Wellness & Thermal Sanctuary",
-  description: "A 70-second transformative cinematic wellness experience crafted for rejuvenation, balance, and pure tranquility.",
+  title: "ALEXA SPA | Luxury Day Spa & Thermal Sanctuary",
+  description:
+    "Experience 5-star private suite massages with attached hot rain showers, 120°C autoclaved volcanic basalt stones, and custom cold-pressed aromatherapy.",
+  keywords: [
+    "Luxury Spa",
+    "Deep Tissue Massage",
+    "Balinese Massage",
+    "Couple Spa Suite",
+    "Attached Shower Spa",
+    "Alexa Spa",
+    "Hot Stone Therapy",
+    "Aromatherapy",
+  ],
+  metadataBase: new URL("https://alexa-spa.vercel.app"),
+  openGraph: {
+    title: "ALEXA SPA | Luxury Day Spa & Thermal Sanctuary",
+    description:
+      "Private suite massages with attached hot rain showers, autoclaved basalt stones, and certified master therapists.",
+    url: "https://alexa-spa.vercel.app",
+    siteName: "ALEXA SPA",
+    images: [
+      {
+        url: "/images/suite-panoramic-luxury.jpg",
+        width: 1920,
+        height: 1080,
+        alt: "Alexa Spa Private Sanctuary Suite",
+      },
+    ],
+    locale: "en_IN",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ALEXA SPA | Luxury Day Spa & Thermal Sanctuary",
+    description: "Private suite massages with attached hot rain showers & 5-star hygiene.",
+    images: ["/images/suite-panoramic-luxury.jpg"],
+  },
 };
 
 export default function RootLayout({

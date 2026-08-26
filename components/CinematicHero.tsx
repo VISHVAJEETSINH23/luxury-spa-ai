@@ -29,7 +29,7 @@ const CHAPTERS: ChapterData[] = [
     titlePrimary: "Relax your body &",
     titleItalic: "de-stress your mind.",
     description:
-      "Welcome to Alexa Spa. Step into peaceful private suites with warm aromatherapy oils, soothing music, and authentic full-body massages.",
+      "Welcome to Iconic Spa. Step into peaceful private suites with warm aromatherapy oils, soothing music, and authentic full-body massages.",
     alignment: "left",
     startProgress: 0.08,
     peakProgress: 0.18,
@@ -83,7 +83,6 @@ interface CinematicHeroProps {
 }
 
 export default function CinematicHero({
-  onOpenMenu,
   onOpenReservation,
   onProgressUpdate,
 }: CinematicHeroProps) {
@@ -99,11 +98,13 @@ export default function CinematicHero({
   const [currentProgress, setCurrentProgress] = useState<number>(0);
   const [currentChapterTitle, setCurrentChapterTitle] = useState<string>("THE THRESHOLD");
   const [activeChapterIndex, setActiveChapterIndex] = useState<number>(0);
-  const [isAudioActive, setIsAudioActive] = useState<boolean>(false);
 
   // Cache for preloaded HTMLImageElements
   const imagesRef = useRef<(HTMLImageElement | null)[]>(new Array(TOTAL_FRAMES).fill(null));
+  const loadingStatusRef = useRef<boolean[]>(new Array(TOTAL_FRAMES).fill(false));
+  const lastRenderedImageRef = useRef<HTMLImageElement | null>(null);
   const lenisRef = useRef<Lenis | null>(null);
+  const isMobileRef = useRef<boolean>(false);
 
   // High-precision sub-frame physics interpolation state
   const physicsRef = useRef({
@@ -122,10 +123,42 @@ export default function CinematicHero({
     return `/frames/frame_${frameNum}.jpg?v=6`;
   };
 
-  // Programmatic in-memory audio initialization (prevents browser PiP / media hover overlay)
+  // Find the nearest available loaded frame so canvas NEVER freezes or drops blank
+  const getBestAvailableImage = useCallback((targetIndex: number): HTMLImageElement | null => {
+    const clamped = Math.max(0, Math.min(TOTAL_FRAMES - 1, targetIndex));
+    const exact = imagesRef.current[clamped];
+    if (exact && exact.complete && exact.naturalWidth > 0) {
+      lastRenderedImageRef.current = exact;
+      return exact;
+    }
+
+    // Search outwards in a radius
+    for (let radius = 1; radius <= 45; radius++) {
+      const prev = clamped - radius;
+      if (prev >= 0) {
+        const img = imagesRef.current[prev];
+        if (img && img.complete && img.naturalWidth > 0) {
+          lastRenderedImageRef.current = img;
+          return img;
+        }
+      }
+      const next = clamped + radius;
+      if (next < TOTAL_FRAMES) {
+        const img = imagesRef.current[next];
+        if (img && img.complete && img.naturalWidth > 0) {
+          lastRenderedImageRef.current = img;
+          return img;
+        }
+      }
+    }
+
+    return lastRenderedImageRef.current;
+  }, []);
+
+  // Programmatic in-memory audio initialization
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const audio = new Audio("/audio/alexa-soundtrack.mp3");
+      const audio = new Audio("/audio/iconic-soundtrack.mp3");
       audio.loop = true;
       audio.preload = "auto";
       audioInstanceRef.current = audio;
@@ -137,61 +170,6 @@ export default function CinematicHero({
         audioInstanceRef.current = null;
       }
     };
-  }, []);
-
-  // Toggle ambient sanctuary soundtrack
-  const handleToggleSound = () => {
-    const audio = audioInstanceRef.current;
-    if (!audio) return;
-
-    if (isAudioActive) {
-      audio.pause();
-      setIsAudioActive(false);
-    } else {
-      audio.volume = 1.0;
-      audio.currentTime = currentProgress * DURATION_SECONDS;
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            setIsAudioActive(true);
-          })
-          .catch((err) => {
-            console.error("Audio playback error:", err);
-          });
-      }
-    }
-  };
-
-  // Ultra-Smooth Sub-Frame Blender: Cross-dissolves between Frame N and Frame N+1
-  const renderSmoothFrame = useCallback((exactFloatFrame: number, mouseOffsetX: number, mouseOffsetY: number) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const clampedFrame = Math.max(0, Math.min(TOTAL_FRAMES - 1, exactFloatFrame));
-    const floorIndex = Math.floor(clampedFrame);
-    const ceilIndex = Math.min(TOTAL_FRAMES - 1, floorIndex + 1);
-    const blendAlpha = clampedFrame - floorIndex;
-
-    const imgFloor = imagesRef.current[floorIndex];
-    const imgCeil = imagesRef.current[ceilIndex];
-
-    const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
-    const w = canvas.width / dpr;
-    const h = canvas.height / dpr;
-
-    // Draw primary base frame
-    if (imgFloor && imgFloor.complete && imgFloor.naturalWidth > 0) {
-      drawScaledImage(ctx, w, h, imgFloor, 1, mouseOffsetX, mouseOffsetY);
-    }
-
-    // Blend next frame with sub-frame alpha if in between frames (creates liquid 60fps/120fps motion)
-    if (blendAlpha > 0.01 && imgCeil && imgCeil.complete && imgCeil.naturalWidth > 0) {
-      drawScaledImage(ctx, w, h, imgCeil, blendAlpha, mouseOffsetX, mouseOffsetY);
-    }
   }, []);
 
   const drawScaledImage = (
@@ -225,27 +203,83 @@ export default function CinematicHero({
       offsetY = (canvasH - renderHeight) / 2 + offsetYModifier;
     }
 
-    ctx.globalAlpha = alpha;
-    ctx.drawImage(img, offsetX, offsetY, renderWidth, renderHeight);
-    ctx.globalAlpha = 1.0;
+    if (alpha < 0.99) {
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(img, offsetX, offsetY, renderWidth, renderHeight);
+      ctx.globalAlpha = 1.0;
+    } else {
+      ctx.drawImage(img, offsetX, offsetY, renderWidth, renderHeight);
+    }
   };
+
+  // Ultra-Smooth Sub-Frame Renderer with Mobile Zero-Stutter Pipeline
+  const renderSmoothFrame = useCallback(
+    (exactFloatFrame: number, mouseOffsetX: number, mouseOffsetY: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const ctx = canvas.getContext("2d", { alpha: false });
+      if (!ctx) return;
+
+      const clampedFrame = Math.max(0, Math.min(TOTAL_FRAMES - 1, exactFloatFrame));
+      const floorIndex = Math.floor(clampedFrame);
+      const ceilIndex = Math.min(TOTAL_FRAMES - 1, floorIndex + 1);
+      const blendAlpha = clampedFrame - floorIndex;
+
+      const dpr = typeof window !== "undefined"
+        ? Math.min(window.devicePixelRatio || 1, isMobileRef.current ? 1.5 : 2.0)
+        : 1;
+      const w = canvas.width / dpr;
+      const h = canvas.height / dpr;
+
+      const isMobile = isMobileRef.current;
+
+      // On mobile or when blendAlpha is near 0/1, do single direct draw for maximum GPU efficiency
+      if (isMobile || blendAlpha < 0.08 || blendAlpha > 0.92) {
+        const targetIdx = blendAlpha > 0.5 ? ceilIndex : floorIndex;
+        const img = getBestAvailableImage(targetIdx);
+        if (img) {
+          drawScaledImage(ctx, w, h, img, 1.0, isMobile ? 0 : mouseOffsetX, isMobile ? 0 : mouseOffsetY);
+        }
+        return;
+      }
+
+      // On desktop, cross-dissolve between floor and ceil frames for liquid 60fps/120fps motion
+      const imgFloor = getBestAvailableImage(floorIndex);
+      const imgCeil = imagesRef.current[ceilIndex];
+
+      if (imgFloor) {
+        drawScaledImage(ctx, w, h, imgFloor, 1.0, mouseOffsetX, mouseOffsetY);
+      }
+
+      if (blendAlpha > 0.08 && imgCeil && imgCeil.complete && imgCeil.naturalWidth > 0) {
+        drawScaledImage(ctx, w, h, imgCeil, blendAlpha, mouseOffsetX, mouseOffsetY);
+      }
+    },
+    [getBestAvailableImage]
+  );
 
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || typeof window === "undefined") return;
 
-    const dpr = window.devicePixelRatio || 1;
+    const isMobile = window.innerWidth < 768 || ("ontouchstart" in window);
+    isMobileRef.current = isMobile;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2.0);
     const width = window.innerWidth;
     const height = window.innerHeight;
 
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
 
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { alpha: false });
     if (ctx) {
       ctx.scale(dpr, dpr);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = isMobile ? "low" : "medium";
     }
 
     renderSmoothFrame(physicsRef.current.currentFrame, 0, 0);
@@ -256,18 +290,24 @@ export default function CinematicHero({
 
     let isMounted = true;
     let rafId: number;
+
+    const isTouch = typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
+    const isMobile = typeof window !== "undefined" && (window.innerWidth < 768 || isTouch);
+    isMobileRef.current = isMobile;
+
     window.addEventListener("resize", resizeCanvas);
 
     const handleMouseMove = (e: MouseEvent) => {
+      if (isMobileRef.current) return;
       const normX = (e.clientX / window.innerWidth - 0.5) * 2;
       const normY = (e.clientY / window.innerHeight - 0.5) * 2;
       physicsRef.current.targetMouseX = -normX * 12;
       physicsRef.current.targetMouseY = -normY * 8;
     };
-    window.addEventListener("mousemove", handleMouseMove);
 
-    const criticalFrames = Math.min(50, TOTAL_FRAMES);
-    let loadedCount = 0;
+    if (!isTouch) {
+      window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    }
 
     const loadSingleImage = (index: number): Promise<HTMLImageElement> => {
       return new Promise((resolve) => {
@@ -275,13 +315,34 @@ export default function CinematicHero({
           resolve(imagesRef.current[index]!);
           return;
         }
+        if (loadingStatusRef.current[index]) {
+          // Already in-flight, resolve when loaded
+          const checkInterval = setInterval(() => {
+            if (imagesRef.current[index]) {
+              clearInterval(checkInterval);
+              resolve(imagesRef.current[index]!);
+            }
+          }, 50);
+          return;
+        }
+
+        loadingStatusRef.current[index] = true;
         const img = new Image();
         img.src = getFramePath(index);
         img.onload = () => {
           if (isMounted) {
             imagesRef.current[index] = img;
+            if (!lastRenderedImageRef.current) {
+              lastRenderedImageRef.current = img;
+            }
+            if ("decode" in img) {
+              img.decode().catch(() => {}).finally(() => resolve(img));
+            } else {
+              resolve(img);
+            }
+          } else {
+            resolve(img);
           }
-          resolve(img);
         };
         img.onerror = () => {
           resolve(img);
@@ -289,19 +350,35 @@ export default function CinematicHero({
       });
     };
 
-    const criticalPromises = [];
-    for (let i = 0; i < criticalFrames; i++) {
-      criticalPromises.push(
+    // Priority loader for dynamic scroll window
+    const prioritizeWindow = (centerFrame: number) => {
+      if (!isMounted) return;
+      const windowRadius = isMobile ? 12 : 24;
+      const start = Math.max(0, Math.floor(centerFrame - 6));
+      const end = Math.min(TOTAL_FRAMES, Math.ceil(centerFrame + windowRadius));
+      for (let i = start; i < end; i++) {
+        if (!imagesRef.current[i] && !loadingStatusRef.current[i]) {
+          loadSingleImage(i);
+        }
+      }
+    };
+
+    // Phase 1: Fast initial boot (first 18 critical frames)
+    const initialBootFrames = 18;
+    let bootCount = 0;
+    const bootPromises = [];
+    for (let i = 0; i < initialBootFrames; i++) {
+      bootPromises.push(
         loadSingleImage(i).then(() => {
-          loadedCount++;
+          bootCount++;
           if (isMounted) {
-            setLoadProgress(Math.round((loadedCount / criticalFrames) * 100));
+            setLoadProgress(Math.round((bootCount / initialBootFrames) * 100));
           }
         })
       );
     }
 
-    Promise.all(criticalPromises).then(() => {
+    Promise.all(bootPromises).then(() => {
       if (!isMounted) return;
 
       resizeCanvas();
@@ -309,20 +386,26 @@ export default function CinematicHero({
 
       setTimeout(() => {
         if (isMounted) setIsLoading(false);
-      }, 300);
+      }, 200);
 
+      // Phase 2: Milestone Anchor Keyframes (Every 8th frame across the entire 840 timeline)
+      // This guarantees immediate visual coverage across the whole scroll timeline
+      const step = isMobile ? 8 : 6;
+      for (let i = initialBootFrames; i < TOTAL_FRAMES; i += step) {
+        loadSingleImage(i);
+      }
+
+      // Lenis Smooth Scroll Setup optimized for Mobile Touch
       const lenis = new Lenis({
-        duration: 2.0,
+        duration: isTouch ? 1.0 : 1.6,
         easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
         orientation: "vertical",
         gestureOrientation: "vertical",
         smoothWheel: true,
-        wheelMultiplier: 0.75,
-        touchMultiplier: 1.2,
+        wheelMultiplier: 0.85,
+        touchMultiplier: isTouch ? 1.5 : 1.2,
       });
       lenisRef.current = lenis;
-      // Published so nav links and the drawer can scroll through Lenis instead
-      // of fighting it with a native jump. See lib/scroll.ts.
       window.__lenis = lenis;
 
       lenis.on("scroll", ScrollTrigger.update);
@@ -333,15 +416,50 @@ export default function CinematicHero({
       gsap.ticker.add(updateTicker);
       gsap.ticker.lagSmoothing(0);
 
+      let lastRenderedFrame = -1;
+      let lastRenderedMouseX = 9999;
+      let lastRenderedMouseY = 9999;
+      let isHeroVisible = true;
+
+      const heroObserver = new IntersectionObserver(
+        ([entry]) => {
+          isHeroVisible = entry.isIntersecting;
+        },
+        { rootMargin: "100px" }
+      );
+      if (containerRef.current) {
+        heroObserver.observe(containerRef.current);
+      }
+
       const liquidLoop = () => {
-        const p = physicsRef.current;
-        const frameDelta = p.targetFrame - p.currentFrame;
-        p.currentFrame += frameDelta * 0.09;
+        if (!isMounted) return;
 
-        p.mouseX += (p.targetMouseX - p.mouseX) * 0.05;
-        p.mouseY += (p.targetMouseY - p.mouseY) * 0.05;
+        if (isHeroVisible) {
+          const p = physicsRef.current;
+          const frameDelta = p.targetFrame - p.currentFrame;
+          const mouseXDelta = p.targetMouseX - p.mouseX;
+          const mouseYDelta = p.targetMouseY - p.mouseY;
 
-        renderSmoothFrame(p.currentFrame, p.mouseX, p.mouseY);
+          // Responsive interpolation factor (faster response on mobile)
+          const interpRate = isMobile ? 0.22 : 0.15;
+          p.currentFrame += frameDelta * interpRate;
+          p.mouseX += mouseXDelta * 0.08;
+          p.mouseY += mouseYDelta * 0.08;
+
+          const isFrameDiff = Math.abs(p.currentFrame - lastRenderedFrame) > (isMobile ? 0.04 : 0.015);
+          const isMouseDiff =
+            !isMobile &&
+            (Math.abs(p.mouseX - lastRenderedMouseX) > 0.1 ||
+              Math.abs(p.mouseY - lastRenderedMouseY) > 0.1);
+
+          if (isFrameDiff || isMouseDiff) {
+            renderSmoothFrame(p.currentFrame, p.mouseX, p.mouseY);
+            lastRenderedFrame = p.currentFrame;
+            lastRenderedMouseX = p.mouseX;
+            lastRenderedMouseY = p.mouseY;
+          }
+        }
+
         rafId = requestAnimationFrame(liquidLoop);
       };
       rafId = requestAnimationFrame(liquidLoop);
@@ -349,11 +467,12 @@ export default function CinematicHero({
       const st = ScrollTrigger.create({
         trigger: containerRef.current,
         start: "top top",
-        end: "+=800%",
+        end: "+=700%",
         pin: viewportRef.current,
         pinSpacing: true,
-        scrub: 1.0,
+        scrub: isTouch ? 0.4 : 0.8,
         anticipatePin: 1,
+        fastScrollEnd: true,
         onUpdate: (self) => {
           const progress = self.progress;
           const targetFrame = Math.min(TOTAL_FRAMES - 1, progress * (TOTAL_FRAMES - 1));
@@ -363,6 +482,9 @@ export default function CinematicHero({
           if (onProgressUpdate) {
             onProgressUpdate(progress);
           }
+
+          // Prioritize stream window around current scroll frame
+          prioritizeWindow(targetFrame);
 
           if (audioInstanceRef.current && !audioInstanceRef.current.paused) {
             const targetAudioTime = progress * DURATION_SECONDS;
@@ -428,36 +550,41 @@ export default function CinematicHero({
 
       ScrollTrigger.refresh();
 
-      let nextIndex = criticalFrames;
-      const CHUNK_SIZE = 35;
+      // Phase 3: Background progressive fill for remaining frames during idle time
+      let backgroundIdx = 0;
+      const CHUNK_SIZE = isMobile ? 8 : 16;
 
       const loadNextChunk = () => {
-        if (!isMounted || nextIndex >= TOTAL_FRAMES) return;
+        if (!isMounted || backgroundIdx >= TOTAL_FRAMES) return;
 
         const promises = [];
-        const end = Math.min(nextIndex + CHUNK_SIZE, TOTAL_FRAMES);
-        for (let i = nextIndex; i < end; i++) {
-          promises.push(loadSingleImage(i));
+        const end = Math.min(backgroundIdx + CHUNK_SIZE, TOTAL_FRAMES);
+        for (let i = backgroundIdx; i < end; i++) {
+          if (!imagesRef.current[i] && !loadingStatusRef.current[i]) {
+            promises.push(loadSingleImage(i));
+          }
         }
 
-        Promise.all(promises).then(() => {
-          nextIndex = end;
+        Promise.all(promises).finally(() => {
+          backgroundIdx = end;
           if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-            (window as any).requestIdleCallback(loadNextChunk);
+            (window as any).requestIdleCallback(loadNextChunk, { timeout: 600 });
           } else {
-            setTimeout(loadNextChunk, 25);
+            setTimeout(loadNextChunk, isMobile ? 120 : 60);
           }
         });
       };
 
-      loadNextChunk();
+      setTimeout(loadNextChunk, 800);
     });
 
     return () => {
       isMounted = false;
       cancelAnimationFrame(rafId);
       window.removeEventListener("resize", resizeCanvas);
-      window.removeEventListener("mousemove", handleMouseMove);
+      if (!isTouch) {
+        window.removeEventListener("mousemove", handleMouseMove);
+      }
       if (audioInstanceRef.current) audioInstanceRef.current.pause();
       if (lenisRef.current) lenisRef.current.destroy();
       if (typeof window !== "undefined") delete window.__lenis;
@@ -512,26 +639,12 @@ export default function CinematicHero({
         {/* Liquid Sub-Frame Interpolated Retina Canvas */}
         <canvas
           ref={canvasRef}
-          className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none block"
+          className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none block brightness-[1.06] contrast-[1.04]"
           id="alexa-cinematic-canvas"
         />
 
-        {/* Ambient Vignette Overlay for High-Contrast Depth */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#07090b]/80 via-transparent to-[#07090b]/50 pointer-events-none" />
-
-        {/* Reading scrim. The frames run from near-black to bright steam, so
-            text set over them held on some frames and vanished on others. This
-            keeps a constant floor of contrast under the copy without flattening
-            the footage — the bright areas still read as bright. */}
-        <div
-          aria-hidden
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "linear-gradient(to right, rgba(7,9,11,0.72) 0%, rgba(7,9,11,0.34) 42%, rgba(7,9,11,0.2) 62%, rgba(7,9,11,0.72) 100%)," +
-              "radial-gradient(120% 90% at 50% 50%, transparent 30%, rgba(7,9,11,0.55) 100%)",
-          }}
-        />
+        {/* Soft, luminous cinematic vignette */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#07090b]/40 via-transparent to-[#07090b]/20 pointer-events-none" />
 
         {/* 
           ======================================================================
@@ -586,9 +699,7 @@ export default function CinematicHero({
             <span className="w-8 h-px bg-[#c5a880]/50" />
           </div>
 
-          <h1 className="text-7xl sm:text-9xl md:text-[11rem] font-serif font-extralight tracking-[0.22em] text-[#f7f4ee] uppercase leading-[0.9] text-shade-strong">
-            Alexa
-          </h1>
+          <h1 className="text-7xl sm:text-9xl md:text-[11rem] font-serif font-extralight tracking-[0.22em] text-[#f7f4ee] uppercase leading-[0.9] text-shade-strong">Alexa</h1>
 
           <p className="text-xl sm:text-3xl md:text-4xl font-serif italic font-light text-[#f0e9df] tracking-wide max-w-3xl text-shade-strong">
             Stillness, kept <span className="text-[#c5a880]">ready</span> for you.

@@ -7,6 +7,7 @@ import EditorialSections from "@/components/EditorialSections";
 import NavigationDrawer from "@/components/NavigationDrawer";
 import ReservationModal from "@/components/ReservationModal";
 import AIWellnessDoctor from "@/components/AIWellnessDoctor";
+import SanctuaryAudioStudio from "@/components/SanctuaryAudioStudio";
 import WhatsAppFloatingWidget from "@/components/WhatsAppFloatingWidget";
 import AmbienceSwitcher from "@/components/AmbienceSwitcher";
 import { scrollToSection } from "@/lib/scroll";
@@ -15,6 +16,7 @@ export default function Home() {
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const [isReservationOpen, setIsReservationOpen] = useState<boolean>(false);
   const [isAIDoctorOpen, setIsAIDoctorOpen] = useState<boolean>(false);
+  const [isAudioStudioOpen, setIsAudioStudioOpen] = useState<boolean>(false);
   const [selectedExperienceId, setSelectedExperienceId] = useState<string | undefined>(undefined);
   const [appliedPromoCode, setAppliedPromoCode] = useState<string | undefined>(undefined);
   const [isAudioActive, setIsAudioActive] = useState<boolean>(false);
@@ -86,8 +88,8 @@ export default function Home() {
       <LuxuryNavbar
         onOpenMenu={() => setIsMenuOpen(true)}
         onOpenReservation={() => handleOpenReservation()}
+        onOpenAudioStudio={() => setIsAudioStudioOpen(true)}
         isAudioActive={isAudioActive}
-        onToggleAudio={handleToggleAudio}
       />
 
       {/* 3. Master 4-Act Continuous Canvas Journey */}
@@ -113,6 +115,12 @@ export default function Home() {
         isOpen={isAIDoctorOpen}
         onClose={() => setIsAIDoctorOpen(false)}
         onApplyPrescription={handleApplyAIPrescription}
+      />
+
+      {/* 6B. Sanctuary ASMR Soundscape Mixer Modal */}
+      <SanctuaryAudioStudio
+        isOpen={isAudioStudioOpen}
+        onClose={() => setIsAudioStudioOpen(false)}
       />
 
       {/* 7. Fullscreen Editorial Navigation Drawer */}

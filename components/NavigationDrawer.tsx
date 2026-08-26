@@ -27,31 +27,45 @@ const MENU_ITEMS = [
   },
   {
     num: "03",
-    title: "ROYAL COUPLE SPA SUITE",
-    tagline: "VIP PRIVATE SUITE FOR 2 (₹4,999)",
-    target: "couple-suite",
-    description: "Rose petal warm bath, synchronized dual massages, private steam shower, and complimentary high-tea.",
+    title: "360° VIP SUITE EXPLORER",
+    tagline: "INTERACTIVE AMENITIES & HOT SHOWER",
+    target: "sanctuary-tour",
+    description: "Inspect private attached rain showers, autoclaved basalt stones, and essential oil bars.",
   },
   {
     num: "04",
-    title: "100% HYGIENE & PRIVATE ROOMS",
-    tagline: "ATTACHED SHOWERS & STERILIZED KITS",
-    target: "hygiene",
-    description: "Single-use disposable linen, fresh sterilized towels, and certified expert therapists.",
+    title: "CUSTOM OIL BLEND ATELIER",
+    tagline: "BESPOKE BOTANICAL PRESCRIPTION",
+    target: "blend-oil",
+    description: "Calibrate your personal cold-pressed botanical oil blend with 25% promo code.",
   },
   {
     num: "05",
+    title: "ROYAL COUPLE SPA SUITE",
+    tagline: "VIP PRIVATE SUITE FOR 2 (₹4,999)",
+    target: "couple-suite",
+    description: "Rose petal warm bath, synchronized dual massages, private steam shower, and high-tea.",
+  },
+  {
+    num: "06",
+    title: "3D HOLOGRAPHIC VIP PASS",
+    tagline: "OBSIDIAN ELITE MEMBERSHIP (30% OFF)",
+    target: "vip-pass",
+    description: "Personalize your tiltable holographic digital pass with exclusive privileges.",
+  },
+  {
+    num: "07",
     title: "BOOK AN APPOINTMENT",
     tagline: "INSTANT ONLINE & WHATSAPP PASS",
     target: "reservation",
     description: "Choose your date, time slot, preferred therapist gender, and receive an instant booking pass.",
   },
   {
-    num: "06",
+    num: "08",
     title: "SPA OWNER CRM & ADMIN",
     tagline: "REVENUE, SLOTS & AI STUDIO",
     target: "admin",
-    description: "Executive operations dashboard, appointment roster, customer health CRM, and AI WhatsApp campaign generator.",
+    description: "Executive operations dashboard, appointment roster, and AI WhatsApp campaign studio.",
   },
 ];
 
@@ -174,7 +188,7 @@ export default function NavigationDrawer({
         <div className="flex items-center gap-6 text-[#c5a880]">
           <span className="hover:underline cursor-pointer">CONCIERGE@ALEXASPA.COM</span>
           <span>•</span>
-          <span className="hover:underline cursor-pointer">+1 (800) 482-ALEXA</span>
+          <a href="tel:+919820012345" className="hover:underline cursor-pointer">+91 98200 12345</a>
         </div>
       </div>
     </div>
