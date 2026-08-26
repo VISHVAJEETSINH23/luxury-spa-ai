@@ -579,6 +579,49 @@ const COPILOT_PRESETS = [
   },
 ];
 
+interface CampaignPreset {
+  id: string;
+  title: string;
+  desc: string;
+  occasion: string;
+  goal: string;
+}
+
+const CAMPAIGN_PRESETS: CampaignPreset[] = [
+  {
+    id: "inactive",
+    title: "Guests who haven't been back",
+    desc: "Thirty days or more since their last visit (6 guests flagged)",
+    occasion: "winning back guests who have not visited in over a month",
+    goal: "get lapsed guests to rebook this week",
+  },
+  {
+    id: "rain",
+    title: "Monsoon escape",
+    desc: "Push heated basalt and steam",
+    occasion: "Mumbai monsoon season",
+    goal: "promote heated stone and steam treatments in wet weather",
+  },
+  {
+    id: "happyhour",
+    title: "Weekday afternoons",
+    desc: "Fill the 11am–4pm trough",
+    occasion: "weekday happy hours, Monday to Thursday 11:00 to 16:00",
+    goal: "fill weekday afternoon slots that usually run empty",
+  },
+];
+
+interface Insights {
+  headline: string;
+  spoken?: string;
+  metrics: { label: string; value: string; note: string }[];
+  findings: string[];
+  actions: { action: string; why: string; effort: string; impact: string }[];
+  risks: string[];
+  sampleSize: number;
+}
+
+
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [language, setLanguage] = useOwnerLanguage();
@@ -609,6 +652,104 @@ export default function AdminDashboardPage() {
   const [copilotData, setCopilotData] = useState<CopilotResponse | null>(null);
 
   const copilotSpeech = useSpeech(language);
+
+const [campaignPrompt, setCampaignPrompt] = useState<string>("");
+  const [campaignBrief, setCampaignBrief] = useState<string>("");
+  const [generatedCampaign, setGeneratedCampaign] = useState<string>("");
+  const [campaignMeta, setCampaignMeta] = useState<{
+    promoCode?: string;
+    bestTimeToSend?: string;
+  } | null>(null);
+  const [campaignBusy, setCampaignBusy] = useState<boolean>(false);
+  const [campaignError, setCampaignError] = useState<string>("");
+  const [campaignCopied, setCampaignCopied] = useState<boolean>(false);
+
+  const [reviewText, setReviewText] = useState<string>("");
+  const [reviewRating, setReviewRating] = useState<number>(5);
+  const [reviewReply, setReviewReply] = useState<string>("");
+  const [reviewIssues, setReviewIssues] = useState<string[]>([]);
+  const [reviewBusy, setReviewBusy] = useState<boolean>(false);
+  const [reviewError, setReviewError] = useState<string>("");
+
+  const [insights, setInsights] = useState<Insights | null>(null);
+  const [insightsQuestion, setInsightsQuestion] = useState<string>("");
+  const [insightsBusy, setInsightsBusy] = useState<boolean>(false);
+  const [insightsError, setInsightsError] = useState<string>("");
+
+  /* The analysis is long. An owner who does not read English business prose can
+     press one button and hear the whole thing instead. */
+  const insightsSpeech = useSpeech(language);
+
+  const runCampaign = async (preset: CampaignPreset) => {
+    if (!preset.occasion.trim()) return;
+    setCampaignPrompt(preset.id);
+    setCampaignBusy(true);
+    setCampaignError("");
+    try {
+      const response = await fetch("/api/ai/campaign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ occasion: preset.occasion, goal: preset.goal, language }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setCampaignError(data?.error ?? "Couldn't write that.");
+        return;
+      }
+      setGeneratedCampaign(data.message);
+      setCampaignMeta({ promoCode: data.promoCode, bestTimeToSend: data.bestTimeToSend });
+    } catch {
+      setCampaignError("Couldn't reach the writer.");
+    } finally {
+      setCampaignBusy(false);
+    }
+  };
+
+  const runReviewReply = async () => {
+    setReviewBusy(true);
+    setReviewError("");
+    try {
+      const response = await fetch("/api/ai/review-reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ review: reviewText, rating: reviewRating, language }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setReviewError(data?.error ?? "Couldn't draft that.");
+        return;
+      }
+      setReviewReply(data.reply);
+      setReviewIssues(data.issues ?? []);
+    } catch {
+      setReviewError("Couldn't reach the writer.");
+    } finally {
+      setReviewBusy(false);
+    }
+  };
+
+  const runInsights = async () => {
+    setInsightsBusy(true);
+    setInsightsError("");
+    try {
+      const response = await fetch("/api/ai/insights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: insightsQuestion, language }),
+      });
+      const data = await response.json();
+      if (!response.ok || data?.error) {
+        setInsightsError(data?.error ?? "Couldn't analyse that.");
+        return;
+      }
+      setInsights(data as Insights);
+    } catch {
+      setInsightsError("Couldn't reach the analyst.");
+    } finally {
+      setInsightsBusy(false);
+    }
+  };
+  
   const dictation = useDictation(language, setCustomQuestion);
 
   // 1. Initial Load & Multi-Layer Real-Time Sync Listeners
@@ -980,6 +1121,7 @@ export default function AdminDashboardPage() {
           {[
             { id: "dashboard", label: "Revenue & KPI Cockpit", icon: BarChart3 },
             { id: "copilot", label: "AI Operations Copilot", icon: Bot, badge: "LIVE DATA" },
+            { id: "automation", label: "AI Marketing & Automation", icon: Send, badge: "AI STUDIO" },
             { id: "appointments", label: "Appointments & Suites", icon: Calendar, badge: `${appointments.length} Booked` },
             { id: "staff", label: "Staff & Therapist CRM", icon: Award, badge: `${staff.length} Active` },
             { id: "customers", label: "Customer CRM & History", icon: Users, badge: `${customers.length} Profiles` },
