@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Phone, Volume2, Sliders } from "lucide-react";
+import { Volume2, Sliders } from "lucide-react";
 import { scrollToSection, scrollToTop } from "@/lib/scroll";
 
 /** `section` is the element the link tracks while scrolling; `match` is the
@@ -11,16 +11,11 @@ import { scrollToSection, scrollToTop } from "@/lib/scroll";
 const NAV_LINKS: { href: string; label: string; section: string; match?: string }[] = [
   { href: "/", label: "Home", section: "hero", match: "/" },
   { href: "/#rituals", label: "Services", section: "rituals" },
-  { href: "/#sanctuary-tour", label: "360° Suite", section: "sanctuary-tour" },
-  { href: "/#blend-oil", label: "Blend Oil", section: "blend-oil" },
-  { href: "/#vip-pass", label: "VIP Pass", section: "vip-pass" },
   { href: "/#couple-suite", label: "Couple Suite", section: "couple-suite" },
   { href: "/#reviews", label: "Reviews", section: "reviews" },
   { href: "/#contact", label: "Contact", section: "contact" },
 ];
 
-const SPA_PHONE_DISPLAY = "+91 98200 12345";
-const SPA_PHONE_TEL = "+919820012345";
 
 interface LuxuryNavbarProps {
   onOpenMenu: () => void;
@@ -157,18 +152,6 @@ export default function LuxuryNavbar({
               <Sliders className="w-4 h-4 group-hover:rotate-12 transition-transform" />
             </button>
           )}
-
-          {/* Direct Phone link */}
-          <a
-            href={`tel:${SPA_PHONE_TEL}`}
-            aria-label={`Call Alexa Spa on ${SPA_PHONE_DISPLAY}`}
-            className="hidden sm:flex shrink-0 items-center gap-2 pr-1 text-[#e8ded2]/60 transition-colors duration-300 hover:text-[#c5a880]"
-          >
-            <Phone className="w-[15px] h-[15px] shrink-0" strokeWidth={1.5} />
-            <span className="hidden 2xl:inline whitespace-nowrap font-mono text-[11px] tracking-[0.12em]">
-              {SPA_PHONE_DISPLAY}
-            </span>
-          </a>
 
           {/* Reserve CTA */}
           <button

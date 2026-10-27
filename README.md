@@ -1,86 +1,68 @@
-# Alexa Spa
+# Alexa Spa — Sangli & Karad
 
-A luxury spa site with an AI business assistant behind it — a practice project
-built to see how far a marketing site can go before it turns into an
-application. "Alexa Spa" is a fictional brand; there is no real client.
+Booking website for the two Alexa Spa branches. Guests pick a branch, a
+therapy and a time, then pay online (Razorpay, into that branch's own account)
+or choose to pay at the spa. The owner sees and manages every booking at
+`/admin`.
 
-**Next.js 14 · TypeScript · Tailwind · GSAP · Lenis · Gemini**
+**Next.js 16 · TypeScript · Tailwind · Supabase (Postgres, Mumbai) · Razorpay · Gemini**
 
----
+## How a booking works
 
-## What it does
+1. `POST /api/bookings` validates everything server-side — branch, therapy,
+   length, date, slot, phone — and takes the **price from the menu**
+   (`lib/treatments.ts`). Nothing the browser says about money is read.
+2. **Pay at spa** → saved as `pending_confirmation`; the owner confirms it.
+3. **Pay online** → saved as `pending_payment`, and a Razorpay order is opened
+   on that branch's account. The guest pays in Razorpay Checkout.
+4. `POST /api/payments/verify` checks the signature with the branch's secret
+   **and** asks Razorpay that the payment is captured for the full amount, then
+   marks the booking `confirmed`.
+5. The Razorpay webhook (`/api/webhooks/razorpay/sangli` and `/karad`) does the
+   same independently, so a guest who closes the tab after paying is still
+   confirmed. Both paths are idempotent.
 
-**The front of house** is a scroll-driven editorial site. The hero is an
-875-frame image sequence scrubbed by scroll position, the way product pages do
-it — decoded ahead of the playhead so the scrub never stalls on a frame that
-has not arrived.
+## Security
 
-**The back of house** is an admin dashboard. Bookings persist through a real
-API route (`/api/bookings`) and a 3-second poller keeps every open tab and
-device in sync, so the front desk on a tablet and the owner on a laptop see the
-same board without either of them refreshing.
+- The database has two tables (`bookings`, `payments`) with RLS on and no
+  policies; the public key can read or write nothing. Only the server, with
+  `SUPABASE_SECRET_KEY`, reaches the data. No secret has a `NEXT_PUBLIC_` name.
+- `/admin` and `/api/admin/*` are behind `proxy.ts` and re-checked in each
+  handler. One owner login: scrypt-hashed password, signed httpOnly
+  `SameSite=Strict` cookie, 12-hour session, 5 attempts per 15 minutes,
+  Origin check on every state change.
+- Webhook and checkout signatures are compared in constant time.
+- CSP, HSTS, `X-Frame-Options: DENY`, `nosniff`, no `X-Powered-By`.
+- Public endpoints are rate-limited; one phone can hold at most 3 open
+  requests.
 
-**The AI layer** is seven server-side route handlers, each with a narrow job:
-
-| route | what it does |
-|---|---|
-| `ai/concierge` | answers guest questions from the treatment catalogue |
-| `ai/today` | the owner's morning briefing from the day's bookings |
-| `ai/insights` | trends across the booking history |
-| `ai/operations-copilot` | staffing and scheduling suggestions |
-| `ai/campaign` | drafts marketing copy from real occupancy |
-| `ai/review-reply` | drafts replies in the brand's voice |
-| `ai/gift-message` | writes gift-card notes |
-
-## The key never reaches the browser
-
-`lib/ai/client.ts` is marked `import "server-only"`, and every AI feature goes
-through a route handler in `app/api/ai/*`. The browser never sees
-`GEMINI_API_KEY` — it only ever sees the answer.
-
-The client also degrades instead of breaking: no key configured returns a clean
-503 telling you to add it, and the model list falls back
-(`gemini-2.5-flash` → `2.0-flash` → `1.5-flash` → `1.5-flash-8b`) rather than
-failing outright when a model is unavailable.
-
-## Scrolling goes through one place
-
-The hero mounts Lenis, which takes over the wheel. A native `scrollIntoView` or
-a plain hash jump fights it and the page lands hard or not at all — so
-`lib/scroll.ts` is the single door: it asks for `window.__lenis` and falls back
-to the native path only when the hero is not mounted.
-
-## Running it
+## Setup
 
 ```bash
 npm install
-cp .env.example .env.local     # add GEMINI_API_KEY
+cp .env.example .env.local
+npm run hash-password        # paste the two lines it prints into .env.local
 npm run dev
 ```
 
-The site runs without a key — the AI panels return a 503 with an explanation
-and everything else works.
+Fill in `.env.local` as described in `.env.example`. A branch without
+Razorpay keys simply shows "Pay at the spa" only.
 
-| variable | required | what for |
-|---|---|---|
-| `GEMINI_API_KEY` | for AI features | Google AI Studio key |
-| `GEMINI_MODEL` | no | defaults to `gemini-2.5-flash` |
-| `NEXT_PUBLIC_SUPABASE_URL` | for shared bookings | falls back to local storage |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | for shared bookings | publishable, not secret |
-| `ADMIN_INSIGHTS_SECRET` | for the admin board | gates the insights routes |
+Branch WhatsApp numbers and addresses live in `lib/branches.ts`; the site hides
+WhatsApp buttons until they are filled in. The database schema is in
+`supabase/migrations/`.
 
-## Layout
+## Backups
 
-```
-app/            routes; app/api/ai/* holds the seven AI handlers
-components/     26 components — hero, suite tour, configurators, admin panels
-lib/ai/         server-only Gemini client and booking helpers
-lib/scroll.ts   the single entry point for programmatic scrolling
-lib/sound*.ts   Web Audio ambience
-public/frames/  the 875-frame hero sequence
-```
+The free Supabase plan has no backups. `.github/workflows/db-backup.yml` takes
+an encrypted dump every night at 03:00 IST and keeps 30 days of them as GitHub
+artifacts — set the `SUPABASE_DB_URL` and `BACKUP_PASSPHRASE` repository
+secrets. Restore steps are in the workflow file.
 
-## Notes
+## Before going live
 
-- Imagery and audio are placeholders for a fictional brand.
-- Not affiliated with Amazon; "Alexa" here is a spa name, not the assistant.
+- [ ] Real Razorpay **live** keys for each branch, and a webhook per branch
+- [ ] Same environment variables set on the host (e.g. Vercel → Settings → Environment Variables)
+- [ ] Branch WhatsApp numbers and addresses in `lib/branches.ts`
+- [ ] Owner reviews `/privacy`, `/terms`, `/refund-policy` (Razorpay checks these)
+- [ ] One real test booking per branch, paid and refunded, end to end

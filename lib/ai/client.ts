@@ -1,7 +1,9 @@
 import "server-only";
 
 import { GoogleGenAI } from "@google/genai";
-import { COMPLETE_SPA_DATA } from "@/lib/treatments";
+import { BRANCH_LIST, branchHours } from "@/lib/branches";
+import { COMPLETE_SPA_DATA, formatRupees } from "@/lib/treatments";
+import { stepsForPrompt } from "@/lib/therapyDetails";
 
 /**
  * Server-side Gemini client.
@@ -10,14 +12,14 @@ import { COMPLETE_SPA_DATA } from "@/lib/treatments";
  * handler in app/api/ai/*, and this module is marked server-only.
  */
 
-export const FAST_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
-export const THINKING_MODEL = process.env.GEMINI_THINKING_MODEL ?? "gemini-2.5-flash";
+export const FAST_MODEL = process.env.GEMINI_MODEL ?? "gemini-3.8-flash";
+export const THINKING_MODEL = process.env.GEMINI_THINKING_MODEL ?? "gemini-3.8-flash";
 
 const FALLBACK_MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.0-flash",
-  "gemini-1.5-flash",
-  "gemini-1.5-flash-8b",
+  "gemini-3.8-flash",
+  "gemini-3.5-flash",
+  "gemini-flash-latest",
+  "gemini-3.5-flash-lite",
 ];
 
 let cached: GoogleGenAI | null = null;
@@ -133,14 +135,12 @@ export function catalogueForPrompt(): string {
     [
       `id: ${t.id}`,
       `name: ${t.title}`,
-      `price: ${t.price} (was ${t.originalPrice})`,
-      `duration: ${t.duration}`,
+      `prices: ${t.options.map((o) => `${o.minutes} min ${formatRupees(o.price)}`).join(", ")}${t.forTwo ? " (price is for two guests)" : ""}`,
       `category: ${t.category}`,
       `pressure: ${t.pressure}`,
-      `oil: ${t.oil}`,
-      `shower: ${t.shower}`,
-      `good for: ${t.subtitle}`,
-      `botanicals: ${t.botanicals.join(", ")}`,
+      `best for: ${t.bestFor}`,
+      `about: ${t.description}`,
+      `what happens in the session: ${stepsForPrompt(t.id)}`,
     ].join(" | ")
   ).join("\n");
 }
@@ -151,14 +151,22 @@ export const GROUNDING_RULES = `
 - Always be concise, polite, and professional.
 `.trim();
 
+// Only facts the spa has confirmed belong here — the concierge repeats them to
+// guests word for word. Branch details come from lib/branches.ts.
 export const SPA_FACTS = `
-ALEXA SPA & WELLNESS CENTER (GRAND COMMERCIAL PLAZA, MUMBAI)
-- 4 Private luxury therapy suites with attached private hot rain showers.
-- Strict 5-star medical-grade sterilization and single-use kits.
-- 100% cold-pressed organic oils: Alpine Eucalyptus, Kashmir Lavender, Royal Sandalwood, Rare Agarwood Oudh.
-- Hours: 10:00 AM – 10:00 PM, 7 days a week.
-- Phone: +91 98200 12345.
-- Online booking code: FIRST20 for 20% off first visit.
+ALEXA SPA
+- Treatments and prices are exactly the catalogue below; nothing else is offered.
+- Couple prices are for two guests.
+- For anything not listed here, ask the guest to message the spa on WhatsApp.
+- Alexa Salon & Spa has two branches: Sangli and Karad. Same menu and prices at both.
+${BRANCH_LIST.map(
+  (b) =>
+    `- ${b.city} branch: ${b.address ?? b.city}. Open 7 days, ${branchHours(b.id)}.` +
+    (b.whatsapp ? ` WhatsApp / phone: +91 ${b.whatsapp}.` : "") +
+    (b.mapsUrl ? ` Directions: ${b.mapsUrl}` : "")
+).join("\n")}
+- There are no discount or promo codes. Never offer one.
+- Guests book on this website: pick a branch, therapy and time, then pay online or pay at the spa.
 `.trim();
 
 export type Language = "en" | "hi" | "hinglish";
@@ -166,7 +174,7 @@ export type Language = "en" | "hi" | "hinglish";
 export function languageInstruction(lang: Language): string {
   if (lang === "hi") {
     return `
-Respond exclusively in clear, respectful Hindi written in the Devanagari script (e.g. "नमस्ते! Alexa Spa में आपका स्वागत है।").
+Respond exclusively in clear, respectful Hindi written in the Devanagari script (e.g. "नमस्ते! Alexa Salon & Spa में आपका स्वागत है।").
 Keep all prices formatted in Indian Rupees (₹).
 `.trim();
   }

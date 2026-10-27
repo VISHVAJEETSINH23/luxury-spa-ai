@@ -1,125 +1,156 @@
 /**
- * Booking requests → Server API, LocalStorage & Broadcast Sync.
+ * Browser side of booking: talks to /api/bookings and Razorpay Checkout.
+ * Nothing about the guest is kept in the browser after the request is sent.
  */
+import type { BranchId } from "@/lib/branches";
 
 export interface BookingRequest {
-  reference: string;
-  therapy_slug: string;
-  therapy_name: string;
-  duration: string;
-  requested_date: string;
-  requested_time: string;
-  guest_name: string;
-  guest_phone: string;
-  guest_email: string | null;
-  guest_notes: string | null;
-  therapist_preference: string;
-  room_type: string;
-  aroma_oil: string;
-  list_price_inr: number;
-  discount_percent: number;
-  final_price_inr: number;
-  promo_code: string | null;
+  branch: BranchId;
+  therapyId: string;
+  minutes: number;
+  date: string;
+  slot: string;
+  name: string;
+  phone: string;
+  email: string;
+  notes: string;
+  therapistPref: "female" | "male" | "any";
+  paymentMode: "online" | "at_spa";
+  consent: boolean;
 }
 
-export const BOOKINGS_STORAGE_KEY = "alexa-live-bookings-v1";
-export const BOOKINGS_BROADCAST_CHANNEL = "alexa_bookings_sync";
-
-/** "ALX-4F2K9C" — short enough to read down a phone line. */
-export function makeReference(): string {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let tail = "";
-  for (let i = 0; i < 6; i++) {
-    tail += alphabet[Math.floor(Math.random() * alphabet.length)];
-  }
-  return `ALX-${tail}`;
+export interface CheckoutDetails {
+  keyId: string;
+  orderId: string;
+  amountPaise: number;
+  currency: "INR";
+  name: string;
+  description: string;
+  prefill: { name: string; contact: string; email?: string };
 }
 
-export function getStoredLiveBookings(): any[] {
-  if (typeof window === "undefined") return [];
+export type BookingResult =
+  | { ok: true; reference: string; status: string; amountInr: number; payment?: CheckoutDetails }
+  | { ok: false; error: string };
+
+export async function createBooking(request: BookingRequest): Promise<BookingResult> {
   try {
-    const raw = window.localStorage.getItem(BOOKINGS_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-export async function saveBookingRequest(
-  request: BookingRequest
-): Promise<{ ok: boolean; error?: string; appointment?: any }> {
-  const assignedRoom =
-    request.room_type === "couple"
-      ? "VIP Couple Suite"
-      : request.therapy_slug?.includes("facial")
-      ? "Facial Suite 03"
-      : "Single En-Suite 01";
-
-  const assignedTherapist =
-    request.room_type === "couple"
-      ? "Maya Devi & Deepak R."
-      : request.therapy_slug?.includes("facial")
-      ? "Sunita Kumari"
-      : request.therapist_preference === "male"
-      ? "Deepak Rawat"
-      : "Pooja Sharma";
-
-  const fallbackAppointment = {
-    id: request.reference,
-    name: request.guest_name,
-    phone: request.guest_phone,
-    therapy: `${request.therapy_name} (${request.duration})`,
-    time: request.requested_time,
-    date: request.requested_date,
-    room: assignedRoom,
-    therapist: assignedTherapist,
-    amount: `₹${request.final_price_inr.toLocaleString("en-IN")}`,
-    status: "Confirmed",
-    oil: request.aroma_oil,
-    isNewOnlineBooking: true,
-    createdAt: new Date().toISOString(),
-    notes: request.guest_notes || "Online Web Booking",
-    email: request.guest_email,
-  };
-
-  // 1. Post to Server API `/api/bookings`
-  let serverAppointment = fallbackAppointment;
-  try {
-    const res = await fetch("/api/bookings", {
+    const response = await fetch("/api/bookings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
     });
-
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.appointment) {
-        serverAppointment = data.appointment;
-      }
-    }
-  } catch (err) {
-    console.warn("Could not reach /api/bookings, saving locally:", err);
+    const data = await response.json().catch(() => null);
+    if (!data) return { ok: false, error: "SERVER_ERROR" };
+    return data as BookingResult;
+  } catch {
+    return { ok: false, error: "NETWORK" };
   }
+}
 
-  // 2. Broadcast and Cache in browser for instant 0ms tab synchronization
-  if (typeof window !== "undefined") {
-    try {
-      const existing = getStoredLiveBookings();
-      const updated = [serverAppointment, ...existing.filter((b) => b.id !== serverAppointment.id)];
-      window.localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(updated));
-
-      if ("BroadcastChannel" in window) {
-        const channel = new BroadcastChannel(BOOKINGS_BROADCAST_CHANNEL);
-        channel.postMessage({ type: "NEW_BOOKING", appointment: serverAppointment });
-      }
-
-      window.dispatchEvent(
-        new CustomEvent("alexa:new-booking", { detail: serverAppointment })
-      );
-    } catch (err) {
-      console.warn("Local storage cache error:", err);
-    }
+export async function verifyPayment(payload: {
+  reference: string;
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}): Promise<{ ok: boolean; status?: string; error?: string }> {
+  try {
+    const response = await fetch("/api/payments/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return (await response.json().catch(() => ({ ok: false, error: "SERVER_ERROR" }))) as {
+      ok: boolean;
+      status?: string;
+      error?: string;
+    };
+  } catch {
+    return { ok: false, error: "NETWORK" };
   }
+}
 
-  return { ok: true, appointment: serverAppointment };
+export async function fetchPaymentOptions(): Promise<Record<BranchId, boolean>> {
+  try {
+    const response = await fetch("/api/payment-options");
+    if (response.ok) return (await response.json()) as Record<BranchId, boolean>;
+  } catch {
+    // fall through
+  }
+  return { sangli: false, karad: false };
+}
+
+interface RazorpayResponse {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}
+
+interface RazorpayInstance {
+  open: () => void;
+  on: (event: "payment.failed", handler: (response: { error?: { description?: string } }) => void) => void;
+}
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => RazorpayInstance;
+  }
+}
+
+let scriptPromise: Promise<boolean> | null = null;
+
+function loadCheckoutScript(): Promise<boolean> {
+  if (typeof window === "undefined") return Promise.resolve(false);
+  if (window.Razorpay) return Promise.resolve(true);
+  if (!scriptPromise) {
+    scriptPromise = new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => {
+        scriptPromise = null;
+        resolve(false);
+      };
+      document.body.appendChild(script);
+    });
+  }
+  return scriptPromise;
+}
+
+/**
+ * Opens Razorpay Checkout. Resolves with the signed response on success,
+ * "dismissed" if the guest closed it, or "unavailable" if it couldn't load.
+ */
+export async function openCheckout(
+  details: CheckoutDetails,
+  reference: string
+): Promise<RazorpayResponse | "dismissed" | "unavailable"> {
+  const loaded = await loadCheckoutScript();
+  if (!loaded || !window.Razorpay) return "unavailable";
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (value: RazorpayResponse | "dismissed") => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+
+    const checkout = new window.Razorpay!({
+      key: details.keyId,
+      order_id: details.orderId,
+      amount: details.amountPaise,
+      currency: details.currency,
+      name: details.name,
+      description: details.description,
+      prefill: details.prefill,
+      notes: { reference },
+      theme: { color: "#c5a880" },
+      retry: { enabled: true, max_count: 3 },
+      handler: (response: RazorpayResponse) => finish(response),
+      modal: { ondismiss: () => finish("dismissed"), confirm_close: true },
+    });
+    checkout.open();
+  });
 }

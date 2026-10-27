@@ -4,243 +4,198 @@
  * It used to live inside ServicesMenu.tsx, which meant server code (the AI
  * routes) could not read it without pulling in a client component. Menu,
  * booking form, body mapper and the AI concierge all import it from here.
+ *
+ * Prices and durations are copied from the spa's printed menu card
+ * ("ALEXA MENU CARD.pdf", checked 27 Oct 2026). Change them there first, then here.
  */
+
+/** One bookable length of a treatment, at the menu price for that length. */
+export interface TreatmentOption {
+  minutes: number;
+  price: number;
+}
 
 export interface SpaTreatmentData {
   id: string;
-  category: "all" | "massages" | "combos" | "facials" | "scrubs" | "express";
+  category: "all" | "massages" | "couple" | "specials";
   tag: string;
   title: string;
   subtitle: string;
+  /** Every length on the menu, shortest first. */
+  options: TreatmentOption[];
+  /** Derived: "45 / 60 Min". */
   duration: string;
+  /** Derived: "From ₹2,000", or "₹2,000" when there is only one length. */
   price: string;
-  originalPrice: string;
   image: string;
   pressure: string;
-  oil: string;
-  shower: string;
+  bestFor: string;
+  /** Priced for two guests rather than one. */
+  forTwo?: boolean;
   description: string;
-  protocol: { phase: string; title: string; description: string }[];
-  botanicals: string[];
 }
 
-export const COMPLETE_SPA_DATA: SpaTreatmentData[] = [
+export function formatRupees(value: number): string {
+  return "₹" + value.toLocaleString("en-IN");
+}
+
+type MenuEntry = Omit<SpaTreatmentData, "duration" | "price">;
+
+const MENU: MenuEntry[] = [
+  {
+    id: "dry-massage",
+    category: "massages",
+    tag: "NO OIL",
+    title: "Dry Massage",
+    subtitle: "Firm palm pressure and assisted stretches, done without oil.",
+    options: [
+      { minutes: 45, price: 2000 },
+      { minutes: 60, price: 2600 },
+    ],
+    image: "/images/menu-dry-massage.jpg",
+    pressure: "Firm",
+    bestFor: "Stiffness, flexibility",
+    description:
+      "A full-body massage without oil, using rhythmic palm and thumb pressure with gentle assisted stretching to loosen stiff joints and tight muscles.",
+  },
+  {
+    id: "aroma-massage",
+    category: "massages",
+    tag: "AROMA OILS",
+    title: "Aroma Massage",
+    subtitle: "Slow, soothing strokes with fragrant aromatic oils.",
+    options: [
+      { minutes: 45, price: 2400 },
+      { minutes: 60, price: 3000 },
+    ],
+    image: "/images/menu-aroma-massage.jpg",
+    pressure: "Light to medium",
+    bestFor: "Stress, mental fatigue",
+    description:
+      "A calming full-body massage with aromatic oils and slow, flowing strokes — for when the mind needs the rest as much as the body.",
+  },
+  {
+    id: "swedish-massage",
+    category: "massages",
+    tag: "RELAXING",
+    title: "Swedish Massage",
+    subtitle: "Long, flowing strokes to relax the whole body.",
+    options: [
+      { minutes: 45, price: 2600 },
+      { minutes: 60, price: 3600 },
+    ],
+    image: "/images/service-head-to-toe.jpg",
+    pressure: "Light to medium",
+    bestFor: "Relaxation, better sleep",
+    description:
+      "The classic relaxation massage: long gliding strokes and gentle kneading across the whole body to ease tension and improve circulation.",
+  },
   {
     id: "deep-tissue",
     category: "massages",
-    tag: "BESTSELLER • DESK PAIN",
-    title: "Deep Tissue & Volcanic Knot Release",
-    subtitle: "Firm trigger-point pressure with 55°C heated volcanic basalt stones for stubborn neck & lower back pain.",
-    duration: "60 / 90 Min",
-    price: "₹2,499",
-    originalPrice: "₹3,200",
-    image: "/images/service-deep-tissue.jpg",
-    pressure: "Deep Firm 🔥",
-    oil: "Alpine Eucalyptus",
-    shower: "Private En-Suite Included",
-    description: "Targeted trigger-point therapy focusing on stiff neck, shoulder rotator cuffs, and lower back strain to dissolve stubborn muscular knots.",
-    protocol: [
-      { phase: "01", title: "Warm Foot Cleanse", description: "Eucalyptus warm towel compress." },
-      { phase: "02", title: "Myofascial Compression", description: "Firm rhythmic thumb & elbow work on trigger points." },
-      { phase: "03", title: "Heated Basalt Stones", description: "55°C volcanic stones along meridian lines." },
-      { phase: "04", title: "Private Hot Rain Shower", description: "Attached shower & warm Himalayan herbal tea." },
+    tag: "FOR MUSCLE PAIN",
+    title: "Deep Tissue Massage",
+    subtitle: "Firm, slow pressure on the deeper muscle layers and knots.",
+    options: [
+      { minutes: 45, price: 2600 },
+      { minutes: 60, price: 3600 },
+      { minutes: 90, price: 4500 },
     ],
-    botanicals: ["Alpine Eucalyptus", "Wintergreen Camphor", "Cold-Pressed Jojoba"],
+    image: "/images/menu-deep-tissue.jpg",
+    pressure: "Firm to deep",
+    bestFor: "Neck, back & shoulder pain",
+    description:
+      "Slow, firm pressure worked into the deeper layers of muscle to release knots and chronic tightness — the one to choose for desk stiffness and back pain.",
   },
   {
-    id: "couple-royal",
-    category: "combos",
-    tag: "VIP COUPLE SUITE",
-    title: "Royal Couple Rejuvenation Suite",
-    subtitle: "Master VIP couple suite with synchronized dual massages, fresh rose petal floral bath & private steam.",
-    duration: "90 Min (For 2)",
-    price: "₹4,999",
-    originalPrice: "₹6,500",
-    image: "/images/service-couple-suite.jpg",
-    pressure: "Custom For Both",
-    oil: "Damask Rose & Jasmine",
-    shower: "Private Couple Steam Suite",
-    description: "Our signature anniversary and couple experience. Includes dual synchronized massages, warm rose petal floral bath, private steam shower, and post-spa high-tea.",
-    protocol: [
-      { phase: "01", title: "Couple Welcoming Soak", description: "Warm rosewater foot bath with quartz crystals." },
-      { phase: "02", title: "Dual Massages (60m)", description: "Simultaneous customized bodywork for both guests." },
-      { phase: "03", title: "Rose Petal Bath & Steam", description: "Private floral bath soak in master suite." },
-      { phase: "04", title: "High-Tea Service", description: "Warm mountain tea & dark chocolate truffles." },
-    ],
-    botanicals: ["Damask Rose Petals", "Sweet Ylang Ylang", "Golden Sandalwood"],
-  },
-  {
-    id: "gold-facial",
-    category: "facials",
-    tag: "24K RED CARPET GLOW",
-    title: "24K Gold Cellular Renewal Facial",
-    subtitle: "Ultrasonic pore purification, medical-grade 24K gold leaf mask & chilled jade lymphatic sculpting.",
-    duration: "60 Min",
-    price: "₹2,999",
-    originalPrice: "₹3,999",
-    image: "/images/service-gold-facial.jpg",
-    pressure: "Lymphatic Sculpt",
-    oil: "Gold Peptide Serum",
-    shower: "Facial Mist & Towel",
-    description: "Deep ultrasonic pore cleansing, 24-karat pure gold leaf application, bio-active hyaluronic plumping, and sculptured chilled jade lymphatic massage for instant red-carpet radiance.",
-    protocol: [
-      { phase: "01", title: "Double Enzymatic Cleanse", description: "Dissolves environmental pollution & opens pores." },
-      { phase: "02", title: "24K Gold Leaf Application", description: "Infuses micro-peptides into dermal layers." },
-      { phase: "03", title: "Chilled Jade Sculpt", description: "Drains puffiness and sharpens facial contours." },
-      { phase: "04", title: "Bio-Shield Moisture Seal", description: "Deep hydration finish with SPF protection." },
-    ],
-    botanicals: ["24K Micronized Gold", "Bio-Hyaluronate", "White Rose Distillate"],
-  },
-  {
-    id: "swedish-relaxation",
+    id: "signature-massage",
     category: "massages",
-    tag: "DEEP SLEEP & CALM",
-    title: "Classic Swedish Body Relaxation",
-    subtitle: "Long flowing effleurage strokes with warm French lavender oil to calm anxiety & induce deep sleep.",
-    duration: "60 Min",
-    price: "₹2,199",
-    originalPrice: "₹2,800",
-    image: "/images/service-swedish.jpg",
-    pressure: "Gentle / Medium",
-    oil: "French Organic Lavender",
-    shower: "Attached Shower Included",
-    description: "Long flowing effleurage strokes and gentle circular kneading designed to stimulate lymphatic drainage, calm anxiety, and promote deep restful sleep.",
-    protocol: [
-      { phase: "01", title: "Circadian Breath Alignment", description: "Lavender mist diffusion & calming compress." },
-      { phase: "02", title: "Full-Body Effleurage", description: "Gentle heart-directed rhythmic glides." },
-      { phase: "03", title: "Scalp Acupressure", description: "Stimulation of cranial marma points." },
-      { phase: "04", title: "En-Suite Rain Shower", description: "Private hot shower & organic herbal tea." },
+    tag: "HOUSE SIGNATURE",
+    title: "Signature Massage",
+    subtitle: "The spa's own signature full-body massage.",
+    options: [
+      { minutes: 45, price: 2600 },
+      { minutes: 60, price: 3600 },
+      { minutes: 90, price: 5500 },
     ],
-    botanicals: ["French Lavender", "Sweet Virgin Almond", "Roman Chamomile"],
+    image: "/images/menu-signature-massage.jpg",
+    pressure: "Tailored to you",
+    bestFor: "A complete full-body reset",
+    description:
+      "Our signature full-body massage, with pressure tailored to you. Ask the front desk what today's session includes.",
   },
   {
-    id: "balinese-aromatherapy",
-    category: "massages",
-    tag: "WARM OILS & ENERGY",
-    title: "Signature Balinese Aromatherapy",
-    subtitle: "Traditional Indonesian acupressure, gentle stretching & rhythmic skin-rolling with warm lemongrass oils.",
-    duration: "75 Min",
-    price: "₹2,599",
-    originalPrice: "₹3,400",
-    image: "/images/service-balinese.jpg",
-    pressure: "Medium Acupressure",
-    oil: "Thai Lemongrass & Ylang",
-    shower: "Attached Shower Included",
-    description: "A traditional Indonesian therapy combining acupressure, gentle joint stretching, and rhythmic skin-rolling with warm essential oils to unlock energy meridians.",
-    protocol: [
-      { phase: "01", title: "Aroma Selection", description: "Custom warm oil blend inhalation." },
-      { phase: "02", title: "Meridian Palm Press", description: "Stimulating energy pathways along the spine." },
-      { phase: "03", title: "Skin Rolling & Fascia", description: "Boosts lymphatic circulation & muscular tone." },
-      { phase: "04", title: "Private Steam Shower", description: "En-suite hot rain shower." },
+    id: "couple-massage",
+    category: "couple",
+    tag: "FOR TWO",
+    title: "Couple Massage",
+    subtitle: "Two guests, two therapists, side by side in one room.",
+    options: [
+      { minutes: 45, price: 5000 },
+      { minutes: 60, price: 8000 },
+      { minutes: 90, price: 10000 },
     ],
-    botanicals: ["Thai Lemongrass", "Ylang Ylang", "Cold-Pressed Jojoba"],
+    image: "/images/menu-couple-massage.jpg",
+    pressure: "Set for each guest",
+    bestFor: "Couples, anniversaries",
+    forTwo: true,
+    description:
+      "A massage for two, side by side in the same room, each with their own therapist and their own pressure. Price is for both guests.",
   },
   {
-    id: "thai-dry",
-    category: "massages",
-    tag: "NO-OIL YOGA STRETCH",
-    title: "Traditional Thai Dry Bodywork",
-    subtitle: "Rhythmic palm compressions and assisted passive yoga stretches on a traditional organic futon.",
-    duration: "60 Min",
-    price: "₹2,299",
-    originalPrice: "₹3,000",
-    image: "/images/service-thai-dry.jpg",
-    pressure: "Firm Assisted Stretch",
-    oil: "Dry Bodywork (No Oil)",
-    shower: "Thai Linen Pajamas Provided",
-    description: "Conducted on a traditional floor mat in loose cotton attire. Combining acupressure with gentle yoga stretches to improve joint flexibility and relieve deep stiffness.",
-    protocol: [
-      { phase: "01", title: "Pajama Fitting & Foot Soak", description: "Traditional loose Thai cotton attire." },
-      { phase: "02", title: "Sen Energy Line Press", description: "Thumb & palm pressure along ten main energy lines." },
-      { phase: "03", title: "Assisted Yoga Stretches", description: "Unlocks hip flexors, hamstrings, and thoracic spine." },
-      { phase: "04", title: "Herbal Inhalation", description: "Warm Lemongrass & ginger tea refreshment." },
+    id: "couple-jacuzzi",
+    category: "couple",
+    tag: "FOR TWO · JACUZZI",
+    title: "Couple Massage with Jacuzzi",
+    subtitle: "A couple massage with time in the jacuzzi.",
+    options: [
+      { minutes: 60, price: 8000 },
+      { minutes: 90, price: 12000 },
     ],
-    botanicals: ["Thai Camphor", "Wild Mint", "Eucalyptus Compress"],
+    image: "/images/menu-couple-jacuzzi.jpg",
+    pressure: "Set for each guest",
+    bestFor: "Special occasions",
+    forTwo: true,
+    description:
+      "Our couple massage with jacuzzi time added — the full experience for two. Price is for both guests.",
   },
   {
-    id: "coffee-scrub",
-    category: "scrubs",
-    tag: "CELLULITE & GLOW",
-    title: "Organic Coffee & Walnut Body Polish",
-    subtitle: "Roasted Arabica coffee grounds and crushed walnut shells to buff dead skin & boost circulation.",
-    duration: "45 Min",
-    price: "₹1,999",
-    originalPrice: "₹2,600",
-    image: "/images/service-coffee-scrub.jpg",
-    pressure: "Exfoliating Scrub",
-    oil: "Coconut & Coffee Infusion",
-    shower: "En-Suite Shower Included",
-    description: "An invigorating whole-body polish that buffs away dull surface layers, stimulates blood flow, and leaves skin touchably soft and glowing.",
-    protocol: [
-      { phase: "01", title: "Warm Water Mist", description: "Prepares skin to absorb botanical nutrients." },
-      { phase: "02", title: "Full-Body Coffee Scrub", description: "Circular polishing strokes from feet to shoulders." },
-      { phase: "03", title: "Private Hot Rain Shower", description: "Rinses away grounds in your private bathroom." },
-      { phase: "04", title: "Silky Moisture Glaze", description: "Light whipped shea butter application." },
+    id: "four-hand",
+    category: "specials",
+    tag: "TWO THERAPISTS",
+    title: "Four Hand Massage",
+    subtitle: "Two therapists working in sync on one guest.",
+    options: [
+      { minutes: 45, price: 4000 },
+      { minutes: 60, price: 6000 },
+      { minutes: 90, price: 8000 },
     ],
-    botanicals: ["Roasted Arabica Coffee", "Crushed Walnut Shells", "Virgin Coconut Oil"],
+    image: "/images/menu-four-hand.jpg",
+    pressure: "Medium",
+    bestFor: "Deep relaxation",
+    description:
+      "Two therapists massage you at the same time in matched, mirrored strokes — twice the hands, and a depth of relaxation a single therapist can't reach.",
   },
   {
-    id: "foot-reflexology",
-    category: "express",
-    tag: "FAST 45-MIN RESET",
-    title: "Thai Foot Reflexology & Head/Back Relief",
-    subtitle: "Peppermint sea salt foot soak, targeted reflexology stick work & seated neck/shoulder tension release.",
-    duration: "45 Min",
-    price: "₹1,499",
-    originalPrice: "₹1,999",
-    image: "/images/service-foot-reflexology.jpg",
-    pressure: "Reflex Point Pressure",
-    oil: "Wild Peppermint & Menthol",
-    shower: "Warm Towel Cleanse",
-    description: "A fast, high-impact relief session. Includes an invigorating peppermint sea salt foot scrub, targeted reflexology stick work on 60+ foot points, and a tension-melting seated neck and shoulder massage.",
-    protocol: [
-      { phase: "01", title: "Peppermint Bubble Soak", description: "Epsom salt foot bath to soften tired soles." },
-      { phase: "02", title: "Reflex Point Stimulation", description: "Acupressure along spinal & cranial reflex zones." },
-      { phase: "03", title: "Seated Trapezius Release", description: "10-minute seated shoulder & neck massage." },
-      { phase: "04", title: "Cooling Herbal Tonic", description: "Electrolyte herbal iced infusion." },
-    ],
-    botanicals: ["Wild Peppermint", "Epsom Mineral Salts", "Lemongrass Balm"],
-  },
-  {
-    id: "kansa-head",
-    category: "express",
-    tag: "MIGRAINE & EYE STRAIN",
-    title: "Ayurvedic Kansa Head & Scalp Massage",
-    subtitle: "Warm Brahmi and Bhringraj oils massaged with an authentic bronze Kansa bowl to melt mental fatigue.",
-    duration: "30 Min",
-    price: "₹999",
-    originalPrice: "₹1,499",
-    image: "/images/service-kansa-head.jpg",
-    pressure: "Marma Acupressure",
-    oil: "Warm Brahmi & Bhringraj",
-    shower: "Warm Hair Towel Wrap",
-    description: "Ancient Ayurvedic therapy for headaches, eye strain, and mental burnout using a bronze metal Kansa wand.",
-    protocol: [
-      { phase: "01", title: "Warm Oil Scalp Drizzle", description: "Infuses roots with cooling Ayurvedic herbs." },
-      { phase: "02", title: "Kansa Bowl Circulation", description: "Draws out internal heat & mental tension." },
-      { phase: "03", title: "Cranial Marma Point Touch", description: "Calms central nervous system." },
-    ],
-    botanicals: ["Organic Brahmi", "Bhringraj Herb", "Cold-Pressed Sesame"],
-  },
-  {
-    id: "membership-pass",
-    category: "combos",
-    tag: "SAVE ₹3,500 • 5 SESSIONS",
-    title: "Sanctuary 5-Session VIP Wellness Pass",
-    subtitle: "Prepaid card for 5 full-body 60-min sessions of your choice. Valid for 6 months, shareable with family.",
-    duration: "5 x 60 Min Sessions",
-    price: "₹8,999",
-    originalPrice: "₹12,499",
-    image: "/images/service-membership.jpg",
-    pressure: "Any Choice Per Visit",
-    oil: "VIP Essential Oils Included",
-    shower: "Private Suite Every Visit",
-    description: "The ultimate wellness investment. Get 5 sixty-minute massages of your choice (Deep Tissue, Swedish, or Balinese) with attached shower and priority slot booking.",
-    protocol: [
-      { phase: "01", title: "Priority Booking Pass", description: "Dedicated WhatsApp VIP concierge number." },
-      { phase: "02", title: "Shareable With Family", description: "Spouse and friends can redeem sessions." },
-      { phase: "03", title: "Valid For 6 Full Months", description: "Flexible scheduling without expiry rush." },
-    ],
-    botanicals: ["All Botanical Oils Included"],
+    id: "body-scrub",
+    category: "specials",
+    tag: "30 MIN",
+    title: "Body Scrub",
+    subtitle: "A full-body exfoliation for smooth, fresh skin.",
+    options: [{ minutes: 30, price: 2000 }],
+    image: "/images/menu-body-scrub.jpg",
+    pressure: "Gentle exfoliation",
+    bestFor: "Dull or dry skin",
+    description:
+      "A full-body scrub that buffs away dead skin and leaves it smooth and fresh. Works on its own or before any massage.",
   },
 ];
+
+export const COMPLETE_SPA_DATA: SpaTreatmentData[] = MENU.map((entry) => {
+  const lowest = Math.min(...entry.options.map((o) => o.price));
+  return {
+    ...entry,
+    duration: `${entry.options.map((o) => o.minutes).join(" / ")} Min`,
+    price: entry.options.length > 1 ? `From ${formatRupees(lowest)}` : formatRupees(lowest),
+  };
+});

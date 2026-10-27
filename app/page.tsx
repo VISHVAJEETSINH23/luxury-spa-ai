@@ -9,6 +9,7 @@ import ReservationModal from "@/components/ReservationModal";
 import AIWellnessDoctor from "@/components/AIWellnessDoctor";
 import SanctuaryAudioStudio from "@/components/SanctuaryAudioStudio";
 import WhatsAppFloatingWidget from "@/components/WhatsAppFloatingWidget";
+import BookingChatbot from "@/components/BookingChatbot";
 import AmbienceSwitcher from "@/components/AmbienceSwitcher";
 import { scrollToSection } from "@/lib/scroll";
 
@@ -18,7 +19,7 @@ export default function Home() {
   const [isAIDoctorOpen, setIsAIDoctorOpen] = useState<boolean>(false);
   const [isAudioStudioOpen, setIsAudioStudioOpen] = useState<boolean>(false);
   const [selectedExperienceId, setSelectedExperienceId] = useState<string | undefined>(undefined);
-  const [appliedPromoCode, setAppliedPromoCode] = useState<string | undefined>(undefined);
+  const [selectedMinutes, setSelectedMinutes] = useState<number | undefined>(undefined);
   const [isAudioActive, setIsAudioActive] = useState<boolean>(false);
 
   const audioInstanceRef = useRef<HTMLAudioElement | null>(null);
@@ -61,15 +62,15 @@ export default function Home() {
     }
   };
 
-  const handleOpenReservation = (experienceId?: string, promoCode?: string) => {
+  const handleOpenReservation = (experienceId?: string, minutes?: number) => {
     setSelectedExperienceId(experienceId);
-    setAppliedPromoCode(promoCode);
+    setSelectedMinutes(minutes);
     setIsReservationOpen(true);
   };
 
-  const handleApplyAIPrescription = (therapyId: string, promoCode: string) => {
+  const handleApplyAIPrescription = (therapyId: string) => {
     setSelectedExperienceId(therapyId);
-    setAppliedPromoCode(promoCode);
+    setSelectedMinutes(undefined);
     setIsReservationOpen(true);
   };
 
@@ -107,6 +108,9 @@ export default function Home() {
       {/* 5. Floating Smart WhatsApp Concierge Widget */}
       <WhatsAppFloatingWidget />
 
+      {/* 5A. AI booking chatbot, stacked above the WhatsApp button */}
+      <BookingChatbot onBook={handleApplyAIPrescription} />
+
       {/* 5B. Ambient background control (colour + motion) */}
       <AmbienceSwitcher />
 
@@ -136,7 +140,7 @@ export default function Home() {
         isOpen={isReservationOpen}
         onClose={() => setIsReservationOpen(false)}
         initialExperience={selectedExperienceId}
-        initialPromoCode={appliedPromoCode}
+        initialMinutes={selectedMinutes}
       />
     </main>
   );

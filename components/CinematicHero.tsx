@@ -25,11 +25,11 @@ const CHAPTERS: ChapterData[] = [
   {
     id: "chapter-1",
     actNumber: "WELCOME",
-    tagline: "LUXURY DAY SPA & WELLNESS",
+    tagline: "PURE PROFESSIONAL FAMILY SPA · SANGLI & KARAD",
     titlePrimary: "Relax your body &",
     titleItalic: "de-stress your mind.",
     description:
-      "Welcome to Iconic Spa. Step into peaceful private suites with warm aromatherapy oils, soothing music, and authentic full-body massages.",
+      "Welcome to Alexa Salon & Spa. Private rooms, warm aromatic oils and full-body massages — in Sangli and Karad.",
     alignment: "left",
     startProgress: 0.08,
     peakProgress: 0.18,
@@ -38,11 +38,11 @@ const CHAPTERS: ChapterData[] = [
   {
     id: "chapter-2",
     actNumber: "PAIN RELIEF",
-    tagline: "EXPERT THERAPEUTIC MASSAGES",
+    tagline: "MASSAGES FOR MUSCLE PAIN",
     titlePrimary: "Relieve desk neck pain &",
     titleItalic: "lower back stiffness.",
     description:
-      "Targeted Deep Tissue and Heated Volcanic Basalt therapy performed by certified master therapists to unbind stubborn muscle knots.",
+      "Deep Tissue Massage works slow, firm pressure into the knots that desk work, driving and the gym leave behind.",
     alignment: "right",
     startProgress: 0.32,
     peakProgress: 0.43,
@@ -50,12 +50,12 @@ const CHAPTERS: ChapterData[] = [
   },
   {
     id: "chapter-3",
-    actNumber: "100% HYGIENE",
-    tagline: "PRIVATE ATTACHED SHOWER SUITES",
-    titlePrimary: "Private en-suite rooms &",
-    titleItalic: "sterilized single-use kits.",
+    actNumber: "PRIVATE ROOMS",
+    tagline: "ATTACHED HOT SHOWER",
+    titlePrimary: "A private room &",
+    titleItalic: "fresh linen, every time.",
     description:
-      "Every guest receives fresh sanitized linen, disposable spa innerwear, and a private attached hot rain shower with organic botanical wash.",
+      "Every guest gets a private room with an attached hot shower and fresh linen.",
     alignment: "left",
     startProgress: 0.58,
     peakProgress: 0.68,
@@ -65,10 +65,10 @@ const CHAPTERS: ChapterData[] = [
     id: "chapter-4",
     actNumber: "BOOK TODAY",
     tagline: "INSTANT APPOINTMENT BOOKING",
-    titlePrimary: "Book your relaxation slot in",
-    titleItalic: "10 seconds.",
+    titlePrimary: "Book your slot",
+    titleItalic: "in under a minute.",
     description:
-      "Open 7 days a week (10 AM - 10 PM). Enjoy Flat 20% Off on your first visit with Code: FIRST20.",
+      "Open 7 days a week from 10 AM, till 8 PM in Sangli and 9 PM in Karad. Book online in under a minute.",
     alignment: "center",
     startProgress: 0.83,
     peakProgress: 0.94,
@@ -330,8 +330,11 @@ export default function CinematicHero({
         const img = new Image();
         img.src = getFramePath(index);
         img.onload = () => {
+          // Store the frame even if this effect run was torn down: the next run
+          // (React re-runs effects in dev) sees it "in flight" and waits for it
+          // here. Gating this on isMounted left the loader stuck at 0% forever.
+          imagesRef.current[index] = img;
           if (isMounted) {
-            imagesRef.current[index] = img;
             if (!lastRenderedImageRef.current) {
               lastRenderedImageRef.current = img;
             }
