@@ -1,0 +1,45 @@
+# Every push and pull request: typecheck, unit tests, production build.
+# Vercel deploys on its own; this is the gate that tells you before merging
+# whether that deploy would break.
+#
+# To make it a hard gate: Repository → Settings → Branches → add a rule for
+# `main` → "Require status checks to pass" → select "CI / check".
+name: CI
+
+on:
+  push:
+    branches: [main, launch-prep]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"

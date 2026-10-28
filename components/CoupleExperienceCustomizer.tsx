@@ -2,6 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
+import { COMPLETE_SPA_DATA, formatRupees } from "@/lib/treatments";
+
+const COUPLE = COMPLETE_SPA_DATA.find((t) => t.id === "couple-massage")!;
+const COUPLE_FROM = COUPLE.options[0];
 
 interface CoupleCustomizerProps {
   onBookCouple: (customSummary: string) => void;
@@ -328,15 +332,15 @@ export default function CoupleExperienceCustomizer({ onBookCouple }: CoupleCusto
           <div className="flex items-baseline justify-between border-b border-white/[0.1] pb-4">
             <span>
               <span className="block font-mono text-[10px] uppercase tracking-[0.22em] text-[#e8ded2]/50">
-                90 minutes · for two
+                {COUPLE.duration} · for two
               </span>
-              <span className="text-[13px] text-[#e8ded2]/50">All taxes and inclusions</span>
+              <span className="text-[13px] text-[#e8ded2]/50">{COUPLE_FROM.minutes} min from</span>
             </span>
-            <span className="font-mono text-3xl text-[#c5a880]">₹4,999</span>
+            <span className="font-mono text-3xl text-[#c5a880]">{formatRupees(COUPLE_FROM.price)}</span>
           </div>
 
           <button
-            onClick={() => onBookCouple("couple-royal")}
+            onClick={() => onBookCouple(COUPLE.id)}
             className="cursor-pointer self-start rounded-full bg-[#c5a880] px-9 py-4 font-sans text-[11px] font-bold uppercase tracking-[0.22em] text-[#07090b] shadow-lg shadow-[#c5a880]/20 transition-all hover:brightness-110"
           >
             Reserve the couple suite

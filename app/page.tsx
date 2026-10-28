@@ -1,16 +1,22 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import dynamic from "next/dynamic";
 import LuxuryNavbar from "@/components/LuxuryNavbar";
 import CinematicHero from "@/components/CinematicHero";
 import EditorialSections from "@/components/EditorialSections";
-import NavigationDrawer from "@/components/NavigationDrawer";
-import ReservationModal from "@/components/ReservationModal";
-import AIWellnessDoctor from "@/components/AIWellnessDoctor";
-import SanctuaryAudioStudio from "@/components/SanctuaryAudioStudio";
 import WhatsAppFloatingWidget from "@/components/WhatsAppFloatingWidget";
+import BookingChatbot from "@/components/BookingChatbot";
 import AmbienceSwitcher from "@/components/AmbienceSwitcher";
+import BranchGate from "@/components/BranchGate";
 import { scrollToSection } from "@/lib/scroll";
+
+// Overlays nobody sees until they tap something: kept out of the first
+// JavaScript bundle and fetched in the background after the page is up.
+const NavigationDrawer = dynamic(() => import("@/components/NavigationDrawer"), { ssr: false });
+const ReservationModal = dynamic(() => import("@/components/ReservationModal"), { ssr: false });
+const AIWellnessDoctor = dynamic(() => import("@/components/AIWellnessDoctor"), { ssr: false });
+const SanctuaryAudioStudio = dynamic(() => import("@/components/SanctuaryAudioStudio"), { ssr: false });
 
 export default function Home() {
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
@@ -18,7 +24,7 @@ export default function Home() {
   const [isAIDoctorOpen, setIsAIDoctorOpen] = useState<boolean>(false);
   const [isAudioStudioOpen, setIsAudioStudioOpen] = useState<boolean>(false);
   const [selectedExperienceId, setSelectedExperienceId] = useState<string | undefined>(undefined);
-  const [appliedPromoCode, setAppliedPromoCode] = useState<string | undefined>(undefined);
+  const [selectedMinutes, setSelectedMinutes] = useState<number | undefined>(undefined);
   const [isAudioActive, setIsAudioActive] = useState<boolean>(false);
 
   const audioInstanceRef = useRef<HTMLAudioElement | null>(null);
@@ -27,7 +33,7 @@ export default function Home() {
     if (typeof window !== "undefined") {
       const audio = new Audio("/audio/alexa-soundtrack.mp3");
       audio.loop = true;
-      audio.preload = "auto";
+      audio.preload = "none"; // fetched on first play, not on page load
       audioInstanceRef.current = audio;
     }
 
@@ -61,15 +67,15 @@ export default function Home() {
     }
   };
 
-  const handleOpenReservation = (experienceId?: string, promoCode?: string) => {
+  const handleOpenReservation = (experienceId?: string, minutes?: number) => {
     setSelectedExperienceId(experienceId);
-    setAppliedPromoCode(promoCode);
+    setSelectedMinutes(minutes);
     setIsReservationOpen(true);
   };
 
-  const handleApplyAIPrescription = (therapyId: string, promoCode: string) => {
+  const handleApplyAIPrescription = (therapyId: string) => {
     setSelectedExperienceId(therapyId);
-    setAppliedPromoCode(promoCode);
+    setSelectedMinutes(undefined);
     setIsReservationOpen(true);
   };
 
@@ -84,6 +90,9 @@ export default function Home() {
 
   return (
     <main className="relative min-h-screen bg-[#07090b] text-[#f7f4ee]">
+      {/* 1. First visit: pick Sangli or Karad */}
+      <BranchGate />
+
       {/* 2. Floating Glassmorphic Luxury Navbar */}
       <LuxuryNavbar
         onOpenMenu={() => setIsMenuOpen(true)}
@@ -106,6 +115,9 @@ export default function Home() {
 
       {/* 5. Floating Smart WhatsApp Concierge Widget */}
       <WhatsAppFloatingWidget />
+
+      {/* 5A. AI booking chatbot, stacked above the WhatsApp button */}
+      <BookingChatbot onBook={handleApplyAIPrescription} />
 
       {/* 5B. Ambient background control (colour + motion) */}
       <AmbienceSwitcher />
@@ -136,7 +148,7 @@ export default function Home() {
         isOpen={isReservationOpen}
         onClose={() => setIsReservationOpen(false)}
         initialExperience={selectedExperienceId}
-        initialPromoCode={appliedPromoCode}
+        initialMinutes={selectedMinutes}
       />
     </main>
   );

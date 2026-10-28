@@ -1,0 +1,59 @@
+# Nightly encrypted backup of the bookings database.
+#
+# The free Supabase plan keeps no backups of its own, so this is the backup.
+# Running every night also counts as activity, which stops the free project
+# from being paused for inactivity.
+#
+# Repository → Settings → Secrets and variables → Actions → add:
+#   SUPABASE_DB_URL     Supabase → Connect → "Session pooler" connection string
+#                       (with the database password filled in)
+#   BACKUP_PASSPHRASE   any long random phrase — keep a copy somewhere safe;
+#                       without it the backups cannot be opened
+#
+# Restore: download the artifact, then
+#   gpg --decrypt alexa-spa-YYYY-MM-DD.sql.gpg > backup.sql
+#   psql "<connection string>" -f backup.sql
+name: Database backup
+
+on:
+  schedule:
+    - cron: "30 21 * * *" # 03:00 India time
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Dump the public schema
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "$SUPABASE_DB_URL" ]; then echo "SUPABASE_DB_URL secret is missing"; exit 1; fi
+          docker run --rm -e PGURL="$SUPABASE_DB_URL" postgres:17 \
+            sh -c 'pg_dump "$PGURL" --schema=public --no-owner --no-privileges' > backup.sql
+          test -s backup.sql
+
+      - name: Encrypt
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [ -z "$BACKUP_PASSPHRASE" ]; then echo "BACKUP_PASSPHRASE secret is missing"; exit 1; fi
+          name="alexa-spa-$(date -u +%F).sql.gpg"
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
+            --symmetric --cipher-algo AES256 --output "$name" backup.sql
+          shred -u backup.sql
+          echo "BACKUP_FILE=$name" >> "$GITHUB_ENV"
+
+      - name: Keep for 30 days
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BACKUP_FILE }}
+          path: ${{ env.BACKUP_FILE }}
+          retention-days: 30
+          if-no-files-found: error

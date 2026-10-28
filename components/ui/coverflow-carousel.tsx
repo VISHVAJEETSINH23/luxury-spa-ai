@@ -4,6 +4,7 @@ import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import FallbackImage from "@/components/ui/FallbackImage";
 
 const useIsoLayoutEffect =
   typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
@@ -501,14 +502,13 @@ export function CoverflowCarousel({
                     height: "calc(var(--cf-card) * 1.15)",
                   }}
                 >
-                  <img
+                  <FallbackImage
                     src={slide.src}
                     alt={slide.alt}
+                    fill
+                    sizes="(min-width: 768px) 360px, 70vw"
                     draggable={false}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = "/images/ritual-basalt.jpg";
-                    }}
-                    className="h-full w-full select-none object-cover brightness-95"
+                    className="select-none object-cover brightness-95"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#07090b] via-transparent to-[#07090b]/40 pointer-events-none" />
 

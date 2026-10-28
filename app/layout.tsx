@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Plus_Jakarta_Sans } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -23,32 +25,31 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "ALEXA SPA | Luxury Day Spa & Thermal Sanctuary",
+  title: "Alexa Salon & Spa | Massage in Sangli & Karad — Book Online",
   description:
-    "Experience 5-star private suite massages with attached hot rain showers, 120°C autoclaved volcanic basalt stones, and custom cold-pressed aromatherapy.",
+    "Alexa Salon & Spa in Sangli and Karad: deep tissue, aroma, Swedish, couple and four-hand massages and body scrub. Private rooms with attached hot shower. Book online, pay online or at the spa.",
   keywords: [
-    "Luxury Spa",
+    "Alexa Salon & Spa",
+    "Spa in Sangli",
+    "Spa in Karad",
+    "Massage Sangli",
+    "Massage Karad",
     "Deep Tissue Massage",
-    "Balinese Massage",
-    "Couple Spa Suite",
-    "Attached Shower Spa",
-    "Alexa Spa",
-    "Hot Stone Therapy",
-    "Aromatherapy",
+    "Couple Massage",
+    "Aroma Massage",
   ],
   metadataBase: new URL("https://alexa-spa.vercel.app"),
   openGraph: {
-    title: "ALEXA SPA | Luxury Day Spa & Thermal Sanctuary",
-    description:
-      "Private suite massages with attached hot rain showers, autoclaved basalt stones, and certified master therapists.",
+    title: "Alexa Salon & Spa | Sangli & Karad",
+    description: "Massages and body scrub in Sangli and Karad. Book online in under a minute.",
     url: "https://alexa-spa.vercel.app",
-    siteName: "ALEXA SPA",
+    siteName: "Alexa Salon & Spa",
     images: [
       {
         url: "/images/suite-panoramic-luxury.jpg",
         width: 1920,
         height: 1080,
-        alt: "Alexa Spa Private Sanctuary Suite",
+        alt: "A treatment room at Alexa Salon & Spa",
       },
     ],
     locale: "en_IN",
@@ -56,8 +57,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "ALEXA SPA | Luxury Day Spa & Thermal Sanctuary",
-    description: "Private suite massages with attached hot rain showers & 5-star hygiene.",
+    title: "Alexa Salon & Spa | Sangli & Karad",
+    description: "Massages and body scrub in Sangli and Karad. Book online in under a minute.",
     images: ["/images/suite-panoramic-luxury.jpg"],
   },
 };
@@ -71,6 +72,8 @@ export default function RootLayout({
     <html lang="en" className={`${cormorant.variable} ${jakarta.variable}`}>
       <body className="bg-[#07090b] text-[#f7f4ee] font-sans antialiased overflow-x-hidden selection:bg-[#c5a880]/30 selection:text-[#f7f4ee]">
         {children}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

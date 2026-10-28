@@ -38,3 +38,14 @@ next-env.d.ts
 # mp4 is over GitHub's 100MB per-file limit.
 /Video Project 1.mp4
 /Video_Project_1_frames.zip
+
+# any env file except the template
+.env
+.env.*
+!.env.example
+
+# browser automation scratch
+/.playwright-mcp/
+
+# Private client files and old local config moved out of public/. Never served.
+/_private/

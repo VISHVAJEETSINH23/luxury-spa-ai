@@ -21,47 +21,26 @@ const MENU_ITEMS = [
   {
     num: "02",
     title: "MASSAGE SERVICES & PRICES",
-    tagline: "FULL BODY MASSAGES (₹1,499 - ₹4,999)",
+    tagline: "MASSAGES, COUPLES & SCRUBS (FROM ₹2,000)",
     target: "rituals",
-    description: "Deep Tissue, Swedish, Balinese Aromatherapy, Traditional Thai, and 24K Gold Facials.",
+    description: "Dry, Aroma, Swedish, Deep Tissue, Signature and Four Hand massages, plus Body Scrub.",
   },
   {
     num: "03",
-    title: "360° VIP SUITE EXPLORER",
-    tagline: "INTERACTIVE AMENITIES & HOT SHOWER",
-    target: "sanctuary-tour",
-    description: "Inspect private attached rain showers, autoclaved basalt stones, and essential oil bars.",
+    title: "COUPLE MASSAGE",
+    tagline: "COUPLE MASSAGE FOR 2 (FROM ₹5,000)",
+    target: "couple-suite",
+    description: "Side-by-side massages for two, with a jacuzzi option.",
   },
   {
     num: "04",
-    title: "CUSTOM OIL BLEND ATELIER",
-    tagline: "BESPOKE BOTANICAL PRESCRIPTION",
-    target: "blend-oil",
-    description: "Calibrate your personal cold-pressed botanical oil blend with 25% promo code.",
-  },
-  {
-    num: "05",
-    title: "ROYAL COUPLE SPA SUITE",
-    tagline: "VIP PRIVATE SUITE FOR 2 (₹4,999)",
-    target: "couple-suite",
-    description: "Rose petal warm bath, synchronized dual massages, private steam shower, and high-tea.",
-  },
-  {
-    num: "06",
-    title: "3D HOLOGRAPHIC VIP PASS",
-    tagline: "OBSIDIAN ELITE MEMBERSHIP (30% OFF)",
-    target: "vip-pass",
-    description: "Personalize your tiltable holographic digital pass with exclusive privileges.",
-  },
-  {
-    num: "07",
     title: "BOOK AN APPOINTMENT",
     tagline: "INSTANT ONLINE & WHATSAPP PASS",
     target: "reservation",
     description: "Choose your date, time slot, preferred therapist gender, and receive an instant booking pass.",
   },
   {
-    num: "08",
+    num: "05",
     title: "SPA OWNER CRM & ADMIN",
     tagline: "REVENUE, SLOTS & AI STUDIO",
     target: "admin",
@@ -119,6 +98,7 @@ export default function NavigationDrawer({
   return (
     <div
       ref={drawerRef}
+      data-lenis-prevent
       className="fixed inset-0 z-[90] flex flex-col justify-between bg-[#07090b]/98 backdrop-blur-2xl text-[#f7f4ee] p-6 sm:p-12 md:p-16 select-none animate-fadeIn"
     >
       {/* Top Header of Drawer */}
@@ -184,12 +164,8 @@ export default function NavigationDrawer({
 
       {/* Footer Info */}
       <div className="flex flex-col sm:flex-row items-center justify-between border-t border-white/10 pt-6 text-[10px] font-mono text-[#e8ded2]/50 gap-3">
-        <span>SANCTUARY • ELEVATION 1,280M • CIRCADIAN ARCHITECTURE</span>
-        <div className="flex items-center gap-6 text-[#c5a880]">
-          <span className="hover:underline cursor-pointer">CONCIERGE@ALEXASPA.COM</span>
-          <span>•</span>
-          <a href="tel:+919820012345" className="hover:underline cursor-pointer">+91 98200 12345</a>
-        </div>
+        <span>ALEXA SPA • SANGLI • KARAD</span>
+        <span className="text-[#c5a880]">OPEN 7 DAYS • SANGLI 10 AM – 8 PM • KARAD 10 AM – 9 PM</span>
       </div>
     </div>
   );
