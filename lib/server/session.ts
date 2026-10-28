@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createHmac, scryptSync, timingSafeEqual } from "node:crypto";
+import { redis } from "@/lib/server/redis";
 
 /**
  * The owner's login. One account, so no user table: the password is stored
@@ -48,7 +49,30 @@ export function isValidSessionToken(token: string | undefined, now = Date.now())
   }
 }
 
-/** ADMIN_PASSWORD_HASH = "scrypt:<salt base64url>:<hash base64url>" */
+/**
+ * Logout revokes the token itself, not just the browser's copy: its signature
+ * goes on a Redis deny-list until the token would have expired anyway. Without
+ * Redis, logout clears the cookie and the token lapses on its own; to cut off
+ * every session at once, change SESSION_SECRET.
+ */
+export async function revokeSessionToken(token: string | undefined, now = Date.now()): Promise<void> {
+  if (!isValidSessionToken(token, now)) return;
+  const [, expiry, signature] = token!.split(".");
+  const ttlSeconds = Math.ceil((Number(expiry) - now) / 1000);
+  await redis()?.pipeline([["SET", `revoked:${signature}`, "1", "EX", ttlSeconds]]);
+}
+
+/** Valid signature, not expired, and not logged out. */
+export async function isActiveSessionToken(token: string | undefined): Promise<boolean> {
+  if (!isValidSessionToken(token)) return false;
+  const client = redis();
+  if (!client) return true;
+  const results = await client.pipeline([["EXISTS", `revoked:${token!.split(".")[2]}`]]);
+  // Redis down: fail open on revocation only — the signature and expiry still held.
+  return results?.[0] !== 1;
+}
+
+/** ADMIN_PASSWORD_HASH ="scrypt:<salt base64url>:<hash base64url>" */
 export function verifyOwnerPassword(password: string): boolean {
   const stored = process.env.ADMIN_PASSWORD_HASH;
   if (!stored) return false;

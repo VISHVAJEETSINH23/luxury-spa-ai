@@ -1,4 +1,5 @@
 import "server-only";
+import { log } from "@/lib/server/log";
 
 import { GoogleGenAI } from "@google/genai";
 import { BRANCH_LIST, branchHours } from "@/lib/branches";
@@ -123,7 +124,7 @@ export async function generateJSON<T>({
         return JSON.parse(text) as T;
       }
     } catch (err) {
-      console.warn(`Gemini call failed on model ${currentModel}:`, (err as Error)?.message);
+      log.warn("gemini.call_failed", { model: currentModel, message: (err as Error)?.message });
     }
   }
 

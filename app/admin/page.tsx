@@ -43,7 +43,8 @@ const ACTIONS: Record<Status, { to: Status; label: string; tone: "primary" | "pl
   cancelled: [],
 };
 
-/** An online booking whose payment hasn't arrived after this long is stale. */
+/** An online booking whose payment hasn't arrived after this long is stale
+    (the room is released then; the booking is auto-cancelled at 90). */
 const PAYMENT_WAIT_MINUTES = 30;
 
 function indiaToday(): string {
@@ -79,6 +80,24 @@ function paymentState(b: Booking): { label: string; className: string } {
   return ageMin < PAYMENT_WAIT_MINUTES
     ? { label: "Waiting for payment", className: "text-[#e8ded2]/70 border-white/20" }
     : { label: "Payment not completed", className: "text-[#e0785e] border-[#e0785e]/40" };
+}
+
+/** A ready-to-send WhatsApp message for the guest, matching the booking's state. */
+function whatsappLink(b: Booking): string {
+  const when = `${prettyDate(b.booking_date)}, ${formatSlot(b.slot_time.slice(0, 5))}`;
+  const branch = BRANCHES[b.branch];
+  const lines =
+    b.status === "cancelled"
+      ? [`Hello ${b.guest_name}, your booking ${b.reference} at ${branch.name} for ${when} has been cancelled.`]
+      : [
+          `Hello ${b.guest_name}, your booking at ${branch.name} is confirmed.`,
+          `${b.therapy_title} · ${b.minutes} min`,
+          `${when}`,
+          `Ref: ${b.reference}`,
+          ...(branch.mapsUrl ? [`Directions: ${branch.mapsUrl}`] : []),
+          "See you soon!",
+        ];
+  return `https://wa.me/91${b.guest_phone}?text=${encodeURIComponent(lines.join("\n"))}`;
 }
 
 const STATUS_LABEL: Record<Status, string> = {
@@ -281,7 +300,7 @@ export default function AdminBookingsPage() {
                         <Phone className="h-3.5 w-3.5" /> {b.guest_phone}
                       </a>
                       <a
-                        href={`https://wa.me/91${b.guest_phone}`}
+                        href={whatsappLink(b)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1.5 rounded-full border border-white/15 px-3.5 py-2 text-sm hover:border-[#25D366]/60"

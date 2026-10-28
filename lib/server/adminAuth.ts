@@ -2,12 +2,12 @@ import "server-only";
 
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { SESSION_COOKIE, isValidSessionToken } from "@/lib/server/session";
+import { SESSION_COOKIE, isActiveSessionToken } from "@/lib/server/session";
 
-/** True when the request carries a valid owner session cookie. */
+/** True when the request carries a valid, not-logged-out owner session cookie. */
 export async function isOwner(): Promise<boolean> {
   const store = await cookies();
-  return isValidSessionToken(store.get(SESSION_COOKIE)?.value);
+  return isActiveSessionToken(store.get(SESSION_COOKIE)?.value);
 }
 
 /**

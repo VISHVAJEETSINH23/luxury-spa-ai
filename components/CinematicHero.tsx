@@ -118,9 +118,12 @@ export default function CinematicHero({
 
   const chapterRefs = useRef<(HTMLDivElement | null)[]>([]);
 
+  // Phones get the 768px-wide set (half the bytes); everything else the 1440px one.
+  const smallFramesRef = useRef<boolean>(false);
+
   const getFramePath = (index: number) => {
     const frameNum = (index + 1).toString().padStart(4, "0");
-    return `/frames/frame_${frameNum}.jpg?v=6`;
+    return `/frames/${smallFramesRef.current ? "m/" : ""}frame_${frameNum}.webp?v=7`;
   };
 
   // Find the nearest available loaded frame so canvas NEVER freezes or drops blank
@@ -160,7 +163,7 @@ export default function CinematicHero({
     if (typeof window !== "undefined") {
       const audio = new Audio("/audio/iconic-soundtrack.mp3");
       audio.loop = true;
-      audio.preload = "auto";
+      audio.preload = "none"; // fetched on first play, not on page load
       audioInstanceRef.current = audio;
     }
 
@@ -294,6 +297,7 @@ export default function CinematicHero({
     const isTouch = typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
     const isMobile = typeof window !== "undefined" && (window.innerWidth < 768 || isTouch);
     isMobileRef.current = isMobile;
+    smallFramesRef.current = window.innerWidth < 768;
 
     window.addEventListener("resize", resizeCanvas);
 

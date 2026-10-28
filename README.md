@@ -33,8 +33,57 @@ or choose to pay at the spa. The owner sees and manages every booking at
   Origin check on every state change.
 - Webhook and checkout signatures are compared in constant time.
 - CSP, HSTS, `X-Frame-Options: DENY`, `nosniff`, no `X-Powered-By`.
-- Public endpoints are rate-limited; one phone can hold at most 3 open
-  requests.
+- Public endpoints are rate-limited (shared across instances through Upstash
+  Redis when configured); one phone can hold at most 3 open requests.
+- A slot can't be booked past the branch's room count — enforced by a
+  database trigger under a lock, so two simultaneous bookings can't both take
+  the last room (`branch_capacity` table).
+- Logout revokes the session token server-side (with Redis). Changing
+  `SESSION_SECRET` signs everyone out at once.
+- The chatbot treats guest messages as questions, never instructions, and has
+  a site-wide daily Gemini budget (`GEMINI_DAILY_LIMIT`).
+
+## Architecture
+
+```
+Browser ──► Vercel, Mumbai (bom1)
+              ├─ static pages + media (CDN, long cache headers)
+              ├─ /api/bookings ─────────► Supabase Postgres (Mumbai)
+              │                └────────► Razorpay (Sangli / Karad accounts)
+              ├─ /api/ai/concierge ─────► Gemini   (cache + budget in Upstash)
+              ├─ /api/webhooks/razorpay/[branch] ◄── Razorpay
+              ├─ /api/cron/expire-bookings ◄── Vercel Cron (daily)
+              ├─ /api/health ◄── uptime monitor
+              └─ /admin (owner only)
+GitHub Actions ──► CI on every push · encrypted DB backup every night
+Errors ──► Sentry · Logs ──► Vercel (JSON lines) · Analytics ──► Vercel
+```
+
+Endpoints are listed in [docs/API.md](docs/API.md).
+
+## Development
+
+```bash
+npm run dev          # local site on :3000
+npm test             # unit tests (Vitest)
+npm run typecheck
+npm run build
+```
+
+CI (`.github/workflows/ci.yml`) runs typecheck, tests and a production build on
+every push and pull request.
+
+## Operations
+
+| What | Where |
+|---|---|
+| Errors | Sentry (set `NEXT_PUBLIC_SENTRY_DSN`). Every server error is reported with its event name, never guest details. |
+| Logs | Vercel → Logs. One JSON object per line: filter by `event`, e.g. `booking.created`, `payment.captured`, `webhook.failed`. |
+| Uptime | Point UptimeRobot / Better Stack at `https://<domain>/api/health` every 5 min. 503 means the database is unreachable. |
+| Traffic & speed | Vercel → Analytics and Speed Insights (enable both in the project). |
+| Unpaid bookings | Cancelled after 90 min — by the daily cron and whenever the owner opens `/admin`. A room is released after 30 min. |
+| Room count | `update public.branch_capacity set rooms = N where branch = 'karad';` |
+| Hero frames | `public/frames/*.webp` (desktop, 1440px) and `public/frames/m/` (phones, 768px). Rebuild from JPGs with `node scripts/convert-frames.mjs`. |
 
 ## Setup
 
@@ -66,3 +115,8 @@ secrets. Restore steps are in the workflow file.
 - [ ] Branch WhatsApp numbers and addresses in `lib/branches.ts`
 - [ ] Owner reviews `/privacy`, `/terms`, `/refund-policy` (Razorpay checks these)
 - [ ] One real test booking per branch, paid and refunded, end to end
+- [ ] Apply `supabase/migrations/20261028000001_slot_capacity.sql` and set real room counts
+- [ ] Vercel env: `CRON_SECRET`, `NEXT_PUBLIC_SENTRY_DSN`, `UPSTASH_REDIS_REST_URL` / `_TOKEN`
+- [ ] Vercel → Analytics and Speed Insights switched on
+- [ ] Uptime monitor on `/api/health`; budget alerts on Razorpay and Google Cloud
+- [ ] GitHub → Settings → Branches: require the CI check on `main`

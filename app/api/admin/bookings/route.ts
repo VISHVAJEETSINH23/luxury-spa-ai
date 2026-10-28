@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { expireStalePendingPayments } from "@/lib/server/expireBookings";
+import { log } from "@/lib/server/log";
 import { isBranchId } from "@/lib/branches";
 import { isOwner, unauthorized } from "@/lib/server/adminAuth";
 import { db, type BookingRow, type PaymentRow } from "@/lib/server/supabase";
@@ -21,8 +23,15 @@ export async function GET(request: Request) {
   try {
     supabase = db();
   } catch (error) {
-    console.error("admin bookings:", (error as Error).message);
+    log.error("admin.bookings.db_unavailable", error);
     return NextResponse.json({ ok: false, error: "SERVER_ERROR" }, { status: 500 });
+  }
+
+  try {
+    await expireStalePendingPayments();
+  } catch (error) {
+    // The board still loads; stale requests just stay pending until next time.
+    log.error("admin.bookings.expire_failed", error);
   }
 
   let query = supabase
@@ -38,7 +47,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await query;
   if (error) {
-    console.error("admin bookings: failed", error.code);
+    log.error("admin.bookings.query_failed", new Error(error.code));
     return NextResponse.json({ ok: false, error: "SERVER_ERROR" }, { status: 500 });
   }
 

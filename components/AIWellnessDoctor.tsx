@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Loader2, Send, Sparkles, X } from "lucide-react";
 import { GUEST_LANGUAGES, useGuestLanguage, type GuestLanguage } from "@/lib/guestLanguage";
 import { GENERAL_NOTES, getTherapyDetail } from "@/lib/therapyDetails";
+import FallbackImage from "@/components/ui/FallbackImage";
 
 interface AIWellnessDoctorProps {
   isOpen: boolean;
@@ -291,12 +292,11 @@ export default function AIWellnessDoctor({
           {/* the prescription */}
           {recommendation && (
             <div className="mt-2 flex flex-col gap-4 border-t border-white/[0.09] pt-6 sm:flex-row sm:items-center">
-              <img
+              <FallbackImage
                 src={recommendation.image}
                 alt=""
-                onError={(event) => {
-                  (event.target as HTMLImageElement).src = "/images/ritual-basalt.jpg";
-                }}
+                width={80}
+                height={80}
                 className="h-20 w-20 shrink-0 rounded-xl object-cover"
               />
 

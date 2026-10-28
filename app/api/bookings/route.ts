@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { log } from "@/lib/server/log";
 import { NextResponse } from "next/server";
 import { BRANCHES, type BranchId } from "@/lib/branches";
 import { parseBookingInput } from "@/lib/server/bookingInput";
@@ -26,7 +27,7 @@ function fail(error: string, status = 400) {
 
 /** A guest books a slot. The only public write into the bookings table. */
 export async function POST(request: Request) {
-  if (!allow(`booking:${clientIp(request)}`, 10, 10 * 60_000)) return fail("TOO_MANY_REQUESTS", 429);
+  if (!(await allow(`booking:${clientIp(request)}`, 10, 10 * 60_000))) return fail("TOO_MANY_REQUESTS", 429);
 
   let raw: unknown;
   try {
@@ -81,9 +82,11 @@ export async function POST(request: Request) {
         .select("id, reference")
         .single();
       if (!error) booking = data;
+      else if (error.message === "SLOT_FULL") return fail("SLOT_FULL", 409);
       else if (error.code !== "23505") throw new Error(`insert failed: ${error.code}`);
     }
     if (!booking) throw new Error("could not allocate a reference");
+    log.info("booking.created", { reference: booking.reference, branch: input.branch, paymentMode: input.paymentMode });
 
     if (input.paymentMode === "at_spa") {
       return NextResponse.json({
@@ -112,7 +115,7 @@ export async function POST(request: Request) {
       if (paymentError) throw new Error(`payment insert failed: ${paymentError.code}`);
     } catch (error) {
       await supabase.from("bookings").update({ status: "cancelled" }).eq("id", booking.id);
-      console.error("booking: order creation failed", (error as Error).message);
+      log.error("booking.order_failed", error, { reference: booking.reference, branch: input.branch });
       return fail("PAYMENT_START_FAILED", 502);
     }
 
@@ -132,7 +135,7 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    console.error("booking: failed", (error as Error).message);
+    log.error("booking.failed", error, { branch: input.branch });
     return fail("SERVER_ERROR", 500);
   }
 }

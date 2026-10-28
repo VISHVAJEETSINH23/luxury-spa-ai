@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { log } from "@/lib/server/log";
 import { isOwner, sameOrigin, unauthorized } from "@/lib/server/adminAuth";
 import { readJson } from "@/lib/server/rateLimit";
 import { db, type BookingRow } from "@/lib/server/supabase";
@@ -38,7 +39,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ re
   try {
     supabase = db();
   } catch (error) {
-    console.error("admin booking update:", (error as Error).message);
+    log.error("admin.booking_update.db_unavailable", error);
     return NextResponse.json({ ok: false, error: "SERVER_ERROR" }, { status: 500 });
   }
   const { data: booking, error } = await supabase

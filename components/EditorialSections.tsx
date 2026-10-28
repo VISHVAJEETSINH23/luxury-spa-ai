@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import ServicesMenu from "@/components/ServicesMenu";
 import BodyPainMapper from "@/components/BodyPainMapper";
@@ -10,6 +10,8 @@ import { scrollToSection } from "@/lib/scroll";
 import { BRAND, BRANCHES, BRANCH_LIST, branchHours, type BranchId } from "@/lib/branches";
 import { BRANCH_PHOTOS, GUEST_REVIEWS } from "@/lib/guestContent";
 import { COMPLETE_SPA_DATA } from "@/lib/treatments";
+import { setSelectedBranch, useSelectedBranch } from "@/lib/selectedBranch";
+import Image from "next/image";
 
 interface EditorialSectionsProps {
   onOpenReservation: (experienceId?: string, minutes?: number) => void;
@@ -24,7 +26,11 @@ function prettyPhone(digits: string): string {
 const HOURS = `Open 7 days · ${BRANCH_LIST.map((b) => `${b.city} ${branchHours(b.id)}`).join(" · ")}`;
 
 export default function EditorialSections({ onOpenReservation, onOpenAIDoctor }: EditorialSectionsProps) {
+  const selectedBranch = useSelectedBranch();
   const [galleryBranch, setGalleryBranch] = useState<BranchId>("sangli");
+  useEffect(() => {
+    if (selectedBranch) setGalleryBranch(selectedBranch);
+  }, [selectedBranch]);
 
   return (
     <WavyBackground className="relative w-full bg-[#07090b] text-[#f7f4ee] select-none z-20">
@@ -48,11 +54,13 @@ export default function EditorialSections({ onOpenReservation, onOpenAIDoctor }:
         className="relative max-w-[1600px] mx-auto px-5 sm:px-8 lg:px-12 py-24 border-t border-white/[0.07] z-10 scroll-mt-28"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16 items-center">
-          <div className="overflow-hidden aspect-[4/3]">
-            <img
+          <div className="relative overflow-hidden aspect-[4/3]">
+            <Image
               src="/images/philosophy-sanctuary.jpg"
               alt="A treatment room at Alexa Salon & Spa"
-              className="h-full w-full object-cover brightness-90 saturate-[0.85]"
+              fill
+              sizes="(min-width: 768px) 50vw, 100vw"
+              className="object-cover brightness-90 saturate-[0.85]"
             />
           </div>
 
@@ -91,7 +99,7 @@ export default function EditorialSections({ onOpenReservation, onOpenAIDoctor }:
                 key={branch.id}
                 role="tab"
                 aria-selected={galleryBranch === branch.id}
-                onClick={() => setGalleryBranch(branch.id)}
+                onClick={() => setSelectedBranch(branch.id)}
                 className={`cursor-pointer rounded-full border px-5 py-2 font-mono text-[11px] uppercase tracking-[0.18em] transition-colors ${
                   galleryBranch === branch.id
                     ? "border-[#c5a880] bg-[#c5a880] text-[#07090b]"
@@ -106,14 +114,18 @@ export default function EditorialSections({ onOpenReservation, onOpenAIDoctor }:
 
         <div className="mt-12 columns-2 md:columns-3 lg:columns-4 gap-3 sm:gap-4 [&>*]:mb-3 sm:[&>*]:mb-4">
           {BRANCH_PHOTOS[galleryBranch].map((photo) => (
-            <div key={photo.src} className="break-inside-avoid overflow-hidden rounded-sm border border-white/[0.07]">
-              <img
+            <div
+              key={photo.src}
+              className={`relative break-inside-avoid overflow-hidden rounded-sm border border-white/[0.07] ${
+                photo.tall ? "aspect-[3/5]" : "aspect-[4/3]"
+              }`}
+            >
+              <Image
                 src={photo.src}
                 alt={photo.alt}
-                loading="lazy"
-                className={`w-full object-cover brightness-90 saturate-[0.9] transition-transform duration-700 hover:scale-[1.04] ${
-                  photo.tall ? "aspect-[3/5]" : "aspect-[4/3]"
-                }`}
+                fill
+                sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
+                className="object-cover brightness-90 saturate-[0.9] transition-transform duration-700 hover:scale-[1.04]"
               />
             </div>
           ))}
@@ -273,7 +285,7 @@ export default function EditorialSections({ onOpenReservation, onOpenAIDoctor }:
           <div className="grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr]">
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <img src="/logo.png" alt="" width={56} height={56} className="h-14 w-14 rounded-full" />
+                <Image src="/logo.png" alt="" width={56} height={56} className="h-14 w-14 rounded-full" />
                 <div>
                   <span className="block font-serif text-xl text-[#f7f4ee]">{BRAND.fullName}</span>
                   <span className="block font-mono text-[10px] uppercase tracking-[0.2em] text-[#c5a880]">{BRAND.tagline}</span>

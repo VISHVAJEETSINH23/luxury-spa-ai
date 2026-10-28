@@ -1,14 +1,20 @@
 import "server-only";
 
+import { redis } from "@/lib/server/redis";
+
 /**
- * Per-instance, in-memory request limits. On a serverless host each warm
- * instance keeps its own counts, so treat this as a brake on scripted abuse,
- * not an exact quota. Booking spam is also capped per phone in the database.
+ * Request limits, fixed window per key.
+ *
+ * With UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN set, counts live
+ * in Redis and are shared by every serverless instance — an exact quota.
+ * Without them (local dev, or Redis unreachable) each warm instance keeps its
+ * own in-memory counts, which is a brake on scripted abuse, not a quota.
+ * Booking spam is also capped per phone in the database.
  */
 
 const buckets = new Map<string, { count: number; resetAt: number }>();
 
-export function allow(key: string, limit: number, windowMs: number): boolean {
+function allowInMemory(key: string, limit: number, windowMs: number): boolean {
   const now = Date.now();
   if (buckets.size > 5000) {
     for (const [k, v] of buckets) if (v.resetAt < now) buckets.delete(k);
@@ -20,6 +26,24 @@ export function allow(key: string, limit: number, windowMs: number): boolean {
   }
   bucket.count += 1;
   return bucket.count <= limit;
+}
+
+/** INCR + PEXPIRE NX in one round trip; returns the count after this hit. */
+async function redisHit(key: string, windowMs: number): Promise<number | null> {
+  const client = redis();
+  if (!client) return null;
+  const windowKey = `rl:${key}:${Math.floor(Date.now() / windowMs)}`;
+  const results = await client.pipeline([
+    ["INCR", windowKey],
+    ["PEXPIRE", windowKey, windowMs, "NX"],
+  ]);
+  return typeof results?.[0] === "number" ? results[0] : null;
+}
+
+export async function allow(key: string, limit: number, windowMs: number): Promise<boolean> {
+  const count = await redisHit(key, windowMs);
+  if (count === null) return allowInMemory(key, limit, windowMs);
+  return count <= limit;
 }
 
 export function clientIp(request: Request): string {

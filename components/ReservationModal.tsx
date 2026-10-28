@@ -10,12 +10,13 @@ import {
   MAX_DAYS_AHEAD,
   SLOT_TIMES,
   formatSlot,
-  isBranchId,
   minutesOfDay,
   slotFits,
   type BranchId,
 } from "@/lib/branches";
 import { createBooking, fetchPaymentOptions, openCheckout, verifyPayment, type CheckoutDetails } from "@/lib/bookings";
+import FallbackImage from "@/components/ui/FallbackImage";
+import { readSelectedBranch, setSelectedBranch } from "@/lib/selectedBranch";
 
 interface ReservationModalProps {
   isOpen: boolean;
@@ -40,7 +41,6 @@ const THERAPIST_PREFS = [
   { id: "any", label: "No preference" },
 ] as const;
 
-const BRANCH_STORAGE_KEY = "alexa-branch";
 
 /** What the server's error codes mean to a guest. */
 const ERROR_TEXT: Record<string, string> = {
@@ -53,6 +53,7 @@ const ERROR_TEXT: Record<string, string> = {
   CONSENT_REQUIRED: "Please tick the box to agree before booking.",
   ONLINE_PAYMENT_UNAVAILABLE: "Online payment isn't available for this branch yet. Choose “Pay at spa”.",
   TOO_MANY_OPEN_BOOKINGS: "This number already has open booking requests. Please call or WhatsApp the spa.",
+  SLOT_FULL: "All rooms are booked at that time. Please pick another slot or branch.",
   TOO_MANY_REQUESTS: "Too many attempts. Please wait a few minutes.",
   PAYMENT_START_FAILED: "We couldn't start the payment. Try again, or choose “Pay at spa”.",
   NETWORK: "No internet connection. Check it and try again.",
@@ -165,14 +166,7 @@ export default function ReservationModal({ isOpen, onClose, initialExperience, i
       const arrived = COMPLETE_SPA_DATA.find((t) => t.id === initialExperience);
       if (initialMinutes && arrived?.options.some((o) => o.minutes === initialMinutes)) setMinutes(initialMinutes);
     }
-    let remembered: BranchId | null = null;
-    try {
-      const stored = localStorage.getItem(BRANCH_STORAGE_KEY);
-      if (isBranchId(stored)) remembered = stored;
-    } catch {
-      // ignore
-    }
-    setBranch(remembered);
+    setBranch(readSelectedBranch());
     setStep("branch");
     void fetchPaymentOptions().then(setOnlineAvailable);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -202,11 +196,7 @@ export default function ReservationModal({ isOpen, onClose, initialExperience, i
 
   const chooseBranch = (id: BranchId) => {
     setBranch(id);
-    try {
-      localStorage.setItem(BRANCH_STORAGE_KEY, id);
-    } catch {
-      // ignore
-    }
+    setSelectedBranch(id);
     setStep(steps[1]);
   };
 
@@ -517,13 +507,12 @@ export default function ReservationModal({ isOpen, onClose, initialExperience, i
                             isActive ? "pl-3 bg-[#c5a880]/[0.06]" : "hover:pl-2 hover:bg-white/[0.02]"
                           }`}
                         >
-                          <img
+                          <FallbackImage
                             src={item.image}
                             alt=""
+                            width={56}
+                            height={56}
                             draggable={false}
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = "/images/ritual-basalt.jpg";
-                            }}
                             className={`h-14 w-14 shrink-0 rounded-lg object-cover transition-all duration-500 ${
                               isActive ? "" : "grayscale-[40%] group-hover:grayscale-0"
                             }`}

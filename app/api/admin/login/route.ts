@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   if (!sameOrigin(request)) return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
 
   // 5 tries per 15 minutes per address.
-  if (!allow(`login:${clientIp(request)}`, 5, 15 * 60_000)) {
+  if (!(await allow(`login:${clientIp(request)}`, 5, 15 * 60_000))) {
     return NextResponse.json({ ok: false, error: "TOO_MANY_ATTEMPTS" }, { status: 429 });
   }
 

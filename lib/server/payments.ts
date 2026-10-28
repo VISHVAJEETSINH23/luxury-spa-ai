@@ -1,5 +1,6 @@
 import "server-only";
 
+import { log } from "@/lib/server/log";
 import { db, type PaymentRow } from "@/lib/server/supabase";
 
 /**
@@ -36,6 +37,7 @@ export async function recordCapturedPayment(
     .eq("id", payment.booking_id)
     .eq("status", "pending_payment");
   if (bookingError) throw new Error(`bookings update failed: ${bookingError.code}`);
+  log.info("payment.captured", { orderId: payment.razorpay_order_id, branch: payment.branch });
 }
 
 export async function findPaymentByOrder(orderId: string): Promise<PaymentRow | null> {

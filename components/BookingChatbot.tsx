@@ -5,6 +5,7 @@ import { Bot, ChevronDown, Loader2, Send, Sparkles, X } from "lucide-react";
 import { GUEST_LANGUAGES, useGuestLanguage, type GuestLanguage } from "@/lib/guestLanguage";
 import { getTherapyDetail } from "@/lib/therapyDetails";
 import { BRANCH_LIST } from "@/lib/branches";
+import FallbackImage from "@/components/ui/FallbackImage";
 
 /** Sit above the WhatsApp button when it is shown, in its place when it isn't. */
 const POSITION = BRANCH_LIST.some((b) => b.whatsapp)
@@ -285,12 +286,11 @@ export default function BookingChatbot({ onBook }: BookingChatbotProps) {
             {recommendation && !thinking && (
               <div className="rounded-2xl border border-[#c5a880]/30 bg-[#090d10] p-2.5">
                 <div className="flex items-center gap-3">
-                  <img
+                  <FallbackImage
                     src={recommendation.image}
                     alt=""
-                    onError={(event) => {
-                      (event.target as HTMLImageElement).src = "/images/ritual-basalt.jpg";
-                    }}
+                    width={48}
+                    height={48}
                     className="h-12 w-12 shrink-0 rounded-xl object-cover"
                   />
                   <div className="min-w-0 flex-1">

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { log } from "@/lib/server/log";
 import { isBranchId } from "@/lib/branches";
 import { findPaymentByOrder, recordCapturedPayment } from "@/lib/server/payments";
 import { verifyWebhookSignature } from "@/lib/server/razorpay";
@@ -78,7 +79,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ bra
     return NextResponse.json({ ok: true });
   } catch (error) {
     // A 5xx makes Razorpay retry later, which is what we want on a DB hiccup.
-    console.error("webhook: failed", (error as Error).message);
+    log.error("webhook.failed", error, { branch, event: event.event ?? "" });
     return new NextResponse(null, { status: 500 });
   }
 }

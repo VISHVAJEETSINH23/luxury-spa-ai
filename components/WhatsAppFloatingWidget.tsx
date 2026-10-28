@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { MapPin, X } from "lucide-react";
 import { FLOATING_OPEN_EVENT } from "@/components/BookingChatbot";
 import { BRANCH_LIST } from "@/lib/branches";
+import { setSelectedBranch, useSelectedBranch } from "@/lib/selectedBranch";
 
 export function WhatsAppIcon({ className = "w-6 h-6" }: { className?: string }) {
   return (
@@ -25,6 +26,7 @@ const REACHABLE = BRANCH_LIST.filter((b) => b.whatsapp);
 
 export default function WhatsAppFloatingWidget() {
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const selectedBranch = useSelectedBranch();
 
   useEffect(() => {
     const onOtherOpen = (event: Event) => {
@@ -43,6 +45,9 @@ export default function WhatsAppFloatingWidget() {
     }
     setIsOpen(!isOpen);
   };
+
+  // Always ask which branch; the guest's own branch is listed first.
+  const branches = [...REACHABLE].sort((a, b) => Number(b.id === selectedBranch) - Number(a.id === selectedBranch));
 
   const chat = (number: string, branchName: string) => {
     const text = `Hi ${branchName}, I would like to book a massage.`;
@@ -72,14 +77,26 @@ export default function WhatsAppFloatingWidget() {
 
           <p className="text-xs text-[#e8ded2]/80">Which branch would you like to message?</p>
 
-          {REACHABLE.map((branch) => (
+          {branches.map((branch) => (
             <button
               key={branch.id}
-              onClick={() => chat(branch.whatsapp!, branch.name)}
+              onClick={() => {
+                setSelectedBranch(branch.id);
+                chat(branch.whatsapp!, branch.name);
+              }}
               className="w-full text-left p-3 rounded-xl bg-[#090d10] border border-white/5 hover:border-[#25D366]/50 text-sm text-[#e4d3ba] flex items-center justify-between transition-all cursor-pointer"
             >
               <span className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-[#25D366]" /> {branch.city}
+                <MapPin className="w-4 h-4 text-[#25D366]" />
+                <span>
+                  <span className="block">{branch.city}</span>
+                  <span className="block font-mono text-[10px] text-[#e8ded2]/50">+91 {branch.whatsapp}</span>
+                </span>
+                {branch.id === selectedBranch && (
+                  <span className="rounded-full border border-[#25D366]/40 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-emerald-400">
+                    Your branch
+                  </span>
+                )}
               </span>
               <span className="text-emerald-400">→</span>
             </button>

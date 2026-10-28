@@ -16,6 +16,7 @@ import {
   Info,
 } from "lucide-react";
 import { CoverflowCarousel, CoverflowSlide } from "@/components/ui/coverflow-carousel";
+import FallbackImage from "@/components/ui/FallbackImage";
 // The catalogue lives in lib/treatments.ts so server code (the AI routes) can
 // read it too; re-exported here because half the app already imports it from
 // this module.
@@ -304,14 +305,13 @@ export default function ServicesMenu({ onOpenReservation, onOpenAIDoctor }: Serv
           <div className="h-full w-full flex flex-col lg:grid lg:grid-cols-[45%_1fr]">
             {/* Plate — image, tag and title */}
             <div className="relative h-52 sm:h-64 lg:h-full overflow-hidden">
-              <img
+              <FallbackImage
                 src={selectedServiceModal.image}
                 alt={selectedServiceModal.title}
+                fill
+                sizes="(min-width: 1024px) 45vw, 100vw"
                 draggable={false}
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = "/images/ritual-basalt.jpg";
-                }}
-                className="h-full w-full object-cover"
+                className="object-cover"
               />
               {/* Two washes: up from the base so the title holds on any photo,
                   and in from the right so the plate meets the panel. */}
