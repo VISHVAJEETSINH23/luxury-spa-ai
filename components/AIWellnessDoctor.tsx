@@ -209,6 +209,7 @@ export default function AIWellnessDoctor({
 
   return createPortal(
     <div
+      data-lenis-prevent
       className="fixed inset-0 z-[120] flex items-stretch justify-center bg-[#07090b]/92 backdrop-blur-2xl sm:items-center sm:p-6 animate-fadeIn"
       role="dialog"
       aria-modal="true"

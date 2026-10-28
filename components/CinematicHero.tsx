@@ -411,6 +411,8 @@ export default function CinematicHero({
         smoothWheel: true,
         wheelMultiplier: 0.85,
         touchMultiplier: isTouch ? 1.5 : 1.2,
+        // Forms, dialogs and chat panels scroll natively — no glide or drag.
+        prevent: (node) => !!node.closest?.("form, [role='dialog'], [aria-modal='true'], [data-lenis-prevent]"),
       });
       lenisRef.current = lenis;
       window.__lenis = lenis;

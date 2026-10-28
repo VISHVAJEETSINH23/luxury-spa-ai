@@ -38,6 +38,7 @@ export default function BranchGate() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="branch-gate-title"
+      data-lenis-prevent
       className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-[#07090b]/90 px-4 py-8 backdrop-blur-xl animate-fadeIn"
     >
       <div className="w-full max-w-3xl">

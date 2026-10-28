@@ -60,7 +60,10 @@ function cleanText(value: unknown, max: number): string | null {
  * or an error code. The price is looked up here from the menu; nothing the
  * browser says about money is read at all.
  */
-export function parseBookingInput(raw: unknown): { ok: true; value: BookingInput } | { ok: false; error: string } {
+export function parseBookingInput(
+  raw: unknown,
+  { byOwner = false }: { byOwner?: boolean } = {}
+): { ok: true; value: BookingInput } | { ok: false; error: string } {
   if (!raw || typeof raw !== "object") return { ok: false, error: "BAD_REQUEST" };
   const body = raw as Record<string, unknown>;
 
@@ -78,7 +81,8 @@ export function parseBookingInput(raw: unknown): { ok: true; value: BookingInput
 
   const slot = typeof body.slot === "string" && SLOT_TIMES.includes(body.slot) ? body.slot : null;
   if (!slot || !slotFits(slot, option.minutes, body.branch)) return { ok: false, error: "INVALID_SLOT" };
-  if (date === today.date && minutesOfDay(slot) < today.minuteOfDay + 30) {
+  // Guests need 30 minutes' notice; the owner can enter a walk-in for a slot already under way.
+  if (!byOwner && date === today.date && minutesOfDay(slot) < today.minuteOfDay + 30) {
     return { ok: false, error: "SLOT_IN_PAST" };
   }
 
@@ -98,7 +102,7 @@ export function parseBookingInput(raw: unknown): { ok: true; value: BookingInput
     return { ok: false, error: "INVALID_PAYMENT_MODE" };
   }
 
-  if (body.consent !== true) return { ok: false, error: "CONSENT_REQUIRED" };
+  if (!byOwner && body.consent !== true) return { ok: false, error: "CONSENT_REQUIRED" };
 
   return {
     ok: true,

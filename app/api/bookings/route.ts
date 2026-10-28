@@ -1,10 +1,10 @@
-import { randomBytes } from "node:crypto";
 import { log } from "@/lib/server/log";
 import { NextResponse } from "next/server";
-import { BRANCHES, type BranchId } from "@/lib/branches";
+import { BRANCHES } from "@/lib/branches";
 import { parseBookingInput } from "@/lib/server/bookingInput";
 import { createOrder, onlinePaymentAvailable, publicKeyId } from "@/lib/server/razorpay";
 import { allow, clientIp, readJson } from "@/lib/server/rateLimit";
+import { makeReference } from "@/lib/server/reference";
 import { db } from "@/lib/server/supabase";
 
 export const runtime = "nodejs";
@@ -12,14 +12,6 @@ export const dynamic = "force-dynamic";
 
 /** Open requests one phone number may have at a time. */
 const MAX_OPEN_PER_PHONE = 3;
-
-function makeReference(branch: BranchId): string {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const bytes = randomBytes(6);
-  let tail = "";
-  for (const byte of bytes) tail += alphabet[byte % alphabet.length];
-  return `${BRANCHES[branch].refPrefix}-${tail}`;
-}
 
 function fail(error: string, status = 400) {
   return NextResponse.json({ ok: false, error }, { status });

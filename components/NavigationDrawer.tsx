@@ -98,6 +98,7 @@ export default function NavigationDrawer({
   return (
     <div
       ref={drawerRef}
+      data-lenis-prevent
       className="fixed inset-0 z-[90] flex flex-col justify-between bg-[#07090b]/98 backdrop-blur-2xl text-[#f7f4ee] p-6 sm:p-12 md:p-16 select-none animate-fadeIn"
     >
       {/* Top Header of Drawer */}

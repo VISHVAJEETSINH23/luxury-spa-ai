@@ -312,7 +312,7 @@ export default function SanctuaryAudioStudio({ isOpen, onClose }: SanctuaryAudio
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xl animate-fadeIn select-none">
+    <div data-lenis-prevent className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xl animate-fadeIn select-none">
       <div className="relative w-full max-w-lg rounded-3xl bg-[#0b0f12] border border-[#c5a880]/35 shadow-2xl p-6 sm:p-7 text-[#f7f4ee] space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/10 pb-4">

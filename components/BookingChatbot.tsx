@@ -253,7 +253,7 @@ export default function BookingChatbot({ onBook }: BookingChatbotProps) {
           </div>
 
           {/* Transcript */}
-          <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+          <div data-lenis-prevent ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
             <p className="rounded-2xl rounded-bl-sm border border-white/5 bg-[#141b22] p-3 font-sans text-xs leading-relaxed text-[#e8ded2]/90">
               {copy.greeting}
             </p>

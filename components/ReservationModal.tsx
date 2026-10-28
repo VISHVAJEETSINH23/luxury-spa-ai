@@ -113,6 +113,7 @@ export default function ReservationModal({ isOpen, onClose, initialExperience, i
   const [step, setStep] = useState<Step>("branch");
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState("");
+  const [serverDown, setServerDown] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; phone?: string; slot?: string }>({});
   const [outcome, setOutcome] = useState<Outcome | null>(null);
 
@@ -138,6 +139,16 @@ export default function ReservationModal({ isOpen, onClose, initialExperience, i
     if (slot && !availableSlots.includes(slot)) setSlot(null);
   }, [availableSlots, slot]);
 
+  // Late in the day nothing is left today: start the guest on tomorrow
+  // instead of showing an empty list.
+  const [todayIsOver, setTodayIsOver] = useState(false);
+  useEffect(() => {
+    if (branch && date === today && availableSlots.length === 0) {
+      setTodayIsOver(true);
+      setDate(addDays(today, 1));
+    }
+  }, [branch, date, today, availableSlots.length]);
+
   const selectTherapy = (id: string) => {
     const next = COMPLETE_SPA_DATA.find((t) => t.id === id);
     if (!next) return;
@@ -157,9 +168,11 @@ export default function ReservationModal({ isOpen, onClose, initialExperience, i
     if (!isOpen) return;
     setOutcome(null);
     setFormError("");
+    setServerDown(false);
     setErrors({});
     setConsent(false);
     setDate(indiaToday());
+    setTodayIsOver(false);
     setSlot(null);
     if (arrivedWithTherapy) {
       selectTherapy(initialExperience!);
@@ -206,6 +219,7 @@ export default function ReservationModal({ isOpen, onClose, initialExperience, i
 
   const goNext = () => {
     setFormError("");
+    setServerDown(false);
     if (step === "branch" && !branch) return;
     if (step === "when" && !slot) {
       setErrors({ slot: "Pick a time." });
@@ -258,6 +272,7 @@ export default function ReservationModal({ isOpen, onClose, initialExperience, i
 
     setBusy(true);
     setFormError("");
+    setServerDown(false);
     try {
       const result = await createBooking({
         branch,
@@ -275,7 +290,13 @@ export default function ReservationModal({ isOpen, onClose, initialExperience, i
       });
 
       if (!result.ok) {
-        setFormError(ERROR_TEXT[result.error] ?? "Something went wrong. Please try again, or call the spa.");
+        const down = !ERROR_TEXT[result.error];
+        setServerDown(down);
+        setFormError(
+          down
+            ? "Online booking isn't working right now. Send your booking on WhatsApp — the details are filled in for you."
+            : ERROR_TEXT[result.error]
+        );
         return;
       }
 
@@ -306,6 +327,21 @@ export default function ReservationModal({ isOpen, onClose, initialExperience, i
     window.open(`https://wa.me/91${branchInfo.whatsapp}?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
   };
 
+  /** Fallback when the booking server can't be reached: the same request, by WhatsApp. */
+  const bookOnWhatsApp = () => {
+    if (!branchInfo?.whatsapp) return;
+    const text = [
+      `Hi ${branchInfo.name}, I'd like to book:`,
+      `${therapy.title} · ${option.minutes} min (${formatRupees(price)})`,
+      `${prettyDate(date)} at ${slot ? formatSlot(slot) : ""}`,
+      `Name: ${guestName.trim()}`,
+      `Phone: ${guestPhone}`,
+      ...(therapistPref !== "any" ? [`Therapist: ${therapistPref}`] : []),
+      ...(guestNotes.trim() ? [`Note: ${guestNotes.trim()}`] : []),
+    ].join("\n");
+    window.open(`https://wa.me/91${branchInfo.whatsapp}?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+  };
+
   if (!isOpen || !mounted) return null;
 
   const fieldClass =
@@ -319,6 +355,7 @@ export default function ReservationModal({ isOpen, onClose, initialExperience, i
 
   return createPortal(
     <div
+      data-lenis-prevent
       className="fixed inset-0 z-[115] bg-[#07090b]/92 backdrop-blur-2xl flex items-stretch sm:items-center justify-center sm:p-6 animate-fadeIn"
       role="dialog"
       aria-modal="true"
@@ -581,8 +618,22 @@ export default function ReservationModal({ isOpen, onClose, initialExperience, i
                     <span className={labelClass}>
                       <Clock className="h-3.5 w-3.5 text-[#c5a880]" /> Time
                     </span>
+                    {todayIsOver && date === addDays(today, 1) && (
+                      <p className="mb-3 font-sans text-sm text-[#c5a880]">
+                        Today&apos;s slots are over — showing tomorrow, {prettyDate(date)}.
+                      </p>
+                    )}
                     {availableSlots.length === 0 ? (
-                      <p className="font-sans text-sm text-[#e8ded2]/60">No more slots today. Please pick another date.</p>
+                      <p className="font-sans text-sm text-[#e8ded2]/60">
+                        No slots left on this date.{" "}
+                        <button
+                          type="button"
+                          onClick={() => setDate(addDays(date, 1))}
+                          className="cursor-pointer text-[#c5a880] underline underline-offset-4"
+                        >
+                          See the next day
+                        </button>
+                      </p>
                     ) : (
                       <div className="grid max-w-3xl grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
                         {availableSlots.map((s) => (
@@ -751,7 +802,18 @@ export default function ReservationModal({ isOpen, onClose, initialExperience, i
                   </div>
 
                   {formError && (
-                    <p className="max-w-2xl border-l border-[#e0785e]/60 pl-4 font-sans text-sm text-[#e0785e]">{formError}</p>
+                    <div className="max-w-2xl space-y-3 border-l border-[#e0785e]/60 pl-4">
+                      <p className="font-sans text-sm text-[#e0785e]">{formError}</p>
+                      {serverDown && branchInfo?.whatsapp && (
+                        <button
+                          type="button"
+                          onClick={bookOnWhatsApp}
+                          className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-[#25D366] px-5 py-2.5 font-sans text-sm font-semibold text-white"
+                        >
+                          <MessageCircle className="h-4 w-4" /> Book on WhatsApp instead
+                        </button>
+                      )}
+                    </div>
                   )}
                 </>
               )}

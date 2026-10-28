@@ -19,9 +19,13 @@ export const THINKING_MODEL = process.env.GEMINI_THINKING_MODEL ?? "gemini-3.8-f
 const FALLBACK_MODELS = [
   "gemini-3.8-flash",
   "gemini-3.5-flash",
-  "gemini-flash-latest",
   "gemini-3.5-flash-lite",
+  "gemini-flash-latest",
 ];
+
+/** One model gets this long before we move on; the whole chain gets DEADLINE_MS. */
+const PER_MODEL_TIMEOUT_MS = 12_000;
+const DEADLINE_MS = 25_000;
 
 let cached: GoogleGenAI | null = null;
 
@@ -110,13 +114,20 @@ export async function generateJSON<T>({
   };
 
   const modelsToTry = Array.from(new Set([model, ...FALLBACK_MODELS]));
+  const deadline = Date.now() + DEADLINE_MS;
 
   for (const currentModel of modelsToTry) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 1_000) {
+      log.warn("gemini.deadline_reached", { model: currentModel });
+      break;
+    }
     try {
+      // A model that hangs must not hold the guest (or the owner) hostage.
       const response = await client.models.generateContent({
         model: currentModel,
         contents,
-        config,
+        config: { ...config, abortSignal: AbortSignal.timeout(Math.min(PER_MODEL_TIMEOUT_MS, remaining)) },
       });
 
       const text = response.text;

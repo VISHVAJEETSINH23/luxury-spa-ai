@@ -294,7 +294,8 @@ export default function ServicesMenu({ onOpenReservation, onOpenAIDoctor }: Serv
       */}
       {mounted && selectedServiceModal && createPortal(
         <div
-          className="fixed inset-0 z-[150] bg-[#0b0f12]"
+          data-lenis-prevent
+      className="fixed inset-0 z-[150] bg-[#0b0f12]"
           role="dialog"
           aria-modal="true"
           aria-label={`${selectedServiceModal.title} ritual protocol`}
