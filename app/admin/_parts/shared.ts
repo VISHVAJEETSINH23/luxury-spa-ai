@@ -1,4 +1,5 @@
 import { BRANCHES, OPENS_AT, formatSlot, minutesOfDay, type BranchId } from "@/lib/branches";
+import { SITE_URL } from "@/lib/site";
 
 /** Shared types and helpers for the owner's dashboard tabs. */
 
@@ -23,6 +24,23 @@ export interface Booking {
   status: Status;
   created_at: string;
   payments: { status: string; razorpay_payment_id: string | null; method: string | null }[];
+}
+
+/**
+ * Opens a tab for the guest's WhatsApp message *before* an await, while the
+ * click still counts as the owner's own action (browsers block pop-ups opened
+ * later). Point it at the message once the change is saved, or close it.
+ */
+export function openMessageTab(): { send: (url: string) => void; cancel: () => void } {
+  const tab = window.open("", "_blank");
+  if (tab) tab.opener = null;
+  return {
+    send: (url) => {
+      if (tab && !tab.closed) tab.location.href = url;
+      else window.open(url, "_blank", "noopener,noreferrer");
+    },
+    cancel: () => tab?.close(),
+  };
 }
 
 export type BranchFilter = BranchId | "all";
@@ -109,19 +127,26 @@ export function whatsappUrl(phone: string, text: string): string {
   return `https://wa.me/91${phone}?text=${encodeURIComponent(text)}`;
 }
 
-/** A ready-to-send WhatsApp message for the guest, matching the booking's state. */
-export function bookingWhatsapp(b: Booking): string {
+/**
+ * A ready-to-send WhatsApp message for the guest, matching the booking's
+ * state — or, with `moved`, telling them the new time.
+ */
+export function bookingWhatsapp(b: Booking, { moved = false }: { moved?: boolean } = {}): string {
   const when = `${prettyDate(b.booking_date)}, ${slotLabel(b)}`;
   const branch = BRANCHES[b.branch];
+  const manage = `View or cancel: ${SITE_URL}/booking?ref=${b.reference}`;
   const lines =
     b.status === "cancelled"
       ? [`Hello ${b.guest_name}, your booking ${b.reference} at ${branch.name} for ${when} has been cancelled.`]
       : [
-          `Hello ${b.guest_name}, your booking at ${branch.name} is confirmed.`,
+          moved
+            ? `Hello ${b.guest_name}, your booking at ${branch.name} has been moved to a new time.`
+            : `Hello ${b.guest_name}, your booking at ${branch.name} is confirmed.`,
           `${b.therapy_title} · ${b.minutes} min`,
           when,
           `Ref: ${b.reference}`,
           ...(branch.mapsUrl ? [`Directions: ${branch.mapsUrl}`] : []),
+          manage,
           "See you soon!",
         ];
   return whatsappUrl(b.guest_phone, lines.join("\n"));

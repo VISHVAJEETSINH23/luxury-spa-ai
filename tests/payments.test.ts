@@ -6,6 +6,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  */
 const updates: { table: string; values: Record<string, unknown>; filters: [string, string, unknown][] }[] = [];
 
+/** When set, confirming a booking fails the way the capacity trigger does. */
+let slotFull = false;
+
 function builder(table: string) {
   const entry = { table, values: {} as Record<string, unknown>, filters: [] as [string, string, unknown][] };
   const chain = {
@@ -22,8 +25,9 @@ function builder(table: string) {
       entry.filters.push(["neq", col, val]);
       return chain;
     },
-    then(resolve: (v: { error: null }) => void) {
-      resolve({ error: null });
+    then(resolve: (v: { error: { message: string } | null }) => void) {
+      const refused = slotFull && entry.table === "bookings" && entry.values.status === "confirmed";
+      resolve({ error: refused ? { message: "SLOT_FULL" } : null });
     },
   };
   return chain;
@@ -49,6 +53,7 @@ const payment = {
 
 beforeEach(() => {
   updates.length = 0;
+  slotFull = false;
 });
 
 describe("recordCapturedPayment", () => {
@@ -69,6 +74,19 @@ describe("recordCapturedPayment", () => {
     expect(bookingUpdate.values).toEqual({ status: "confirmed" });
     // A booking the owner already cancelled must stay cancelled.
     expect(bookingUpdate.filters).toContainEqual(["eq", "status", "pending_payment"]);
+  });
+
+  it("cancels instead of overbooking when the room was taken after the hold lapsed", async () => {
+    slotFull = true;
+    await recordCapturedPayment(payment, "pay_1", 360000, "upi");
+
+    const [paymentUpdate, confirmAttempt, cancel] = updates;
+    expect(paymentUpdate.values).toMatchObject({ status: "captured" });
+    expect(confirmAttempt.values).toEqual({ status: "confirmed" });
+    // The money is recorded; the booking shows as "paid, refund due".
+    expect(cancel.table).toBe("bookings");
+    expect(cancel.values).toEqual({ status: "cancelled" });
+    expect(cancel.filters).toContainEqual(["eq", "status", "pending_payment"]);
   });
 
   it("is idempotent: an already-captured payment isn't written again", async () => {

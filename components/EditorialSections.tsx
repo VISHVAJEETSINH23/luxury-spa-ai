@@ -338,6 +338,9 @@ export default function EditorialSections({ onOpenReservation, onOpenAIDoctor }:
           <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.07] py-7 font-mono text-[11px] uppercase tracking-[0.18em] text-[#f0e9df]/45">
             <span>© {new Date().getFullYear()} {BRAND.fullName}</span>
             <div className="flex flex-wrap items-center gap-7">
+              <Link href="/booking" className="transition-colors hover:text-[#c5a880]">
+                Manage booking
+              </Link>
               <Link href="/privacy" className="transition-colors hover:text-[#c5a880]">
                 Privacy
               </Link>

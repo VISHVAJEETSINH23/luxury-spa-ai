@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Loader2, UserPlus, X } from "lucide-react";
 import { BRANCH_LIST, MAX_DAYS_AHEAD, SLOT_TIMES, formatSlot, slotFits, type BranchId } from "@/lib/branches";
 import { COMPLETE_SPA_DATA } from "@/lib/treatments";
+import { fetchFullSlots } from "@/lib/bookings";
 import { addDays, indiaToday, rupees } from "./shared";
 
 const ERRORS: Record<string, string> = {
@@ -47,6 +48,17 @@ export default function WalkInModal({
   useEffect(() => {
     if (slot && !slots.includes(slot)) setSlot("");
   }, [slots, slot]);
+
+  // Shown, not enforced: the database refuses a full slot either way.
+  const [full, setFull] = useState<string[]>([]);
+  useEffect(() => {
+    let current = true;
+    setFull([]);
+    void fetchFullSlots(branch, date, option.minutes).then((list) => current && setFull(list));
+    return () => {
+      current = false;
+    };
+  }, [branch, date, option.minutes]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && !busy && onClose();
     window.addEventListener("keydown", onKey);
@@ -159,10 +171,15 @@ export default function WalkInModal({
                   type="button"
                   onClick={() => setSlot(s)}
                   className={`cursor-pointer rounded-lg border py-2 font-mono text-[11px] transition-colors ${
-                    slot === s ? "border-[#c5a880] bg-[#c5a880] font-bold text-[#07090b]" : "border-white/10 hover:border-white/25"
+                    slot === s
+                      ? "border-[#c5a880] bg-[#c5a880] font-bold text-[#07090b]"
+                      : full.includes(s)
+                        ? "border-[#e0785e]/30 text-[#e0785e]/70"
+                        : "border-white/10 hover:border-white/25"
                   }`}
                 >
                   {formatSlot(s).replace(" ", "")}
+                  {full.includes(s) && <span className="block text-[9px] uppercase">Full</span>}
                 </button>
               ))}
             </div>

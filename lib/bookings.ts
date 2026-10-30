@@ -70,6 +70,54 @@ export async function verifyPayment(payload: {
   }
 }
 
+/** Start times already full on that day. Empty when it can't be checked — the server still refuses a full slot. */
+export async function fetchFullSlots(branch: BranchId, date: string, minutes: number): Promise<string[]> {
+  try {
+    const params = new URLSearchParams({ branch, date, minutes: String(minutes) });
+    const response = await fetch(`/api/availability?${params}`, { cache: "no-store" });
+    const data = (await response.json()) as { ok: boolean; full?: string[] };
+    return data.ok && Array.isArray(data.full) ? data.full : [];
+  } catch {
+    return [];
+  }
+}
+
+export interface GuestBooking {
+  reference: string;
+  branch: BranchId;
+  therapyTitle: string;
+  minutes: number;
+  date: string;
+  slot: string;
+  name: string;
+  amountInr: number;
+  paymentMode: "online" | "at_spa";
+  paid: boolean;
+  status: "pending_payment" | "pending_confirmation" | "confirmed" | "completed" | "cancelled";
+  canCancel: boolean;
+  cancelBlockedBy: "NOT_ACTIVE" | "STARTED" | "TOO_LATE_FOR_REFUND" | null;
+}
+
+/** A guest's own booking, by reference and mobile number. */
+export async function manageBooking(
+  action: "view" | "cancel",
+  reference: string,
+  phone: string
+): Promise<{ ok: true; booking: GuestBooking } | { ok: false; error: string }> {
+  try {
+    const response = await fetch("/api/bookings/manage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, reference, phone }),
+    });
+    return (await response.json().catch(() => ({ ok: false, error: "SERVER_ERROR" }))) as
+      | { ok: true; booking: GuestBooking }
+      | { ok: false; error: string };
+  } catch {
+    return { ok: false, error: "NETWORK" };
+  }
+}
+
 export async function fetchPaymentOptions(): Promise<Record<BranchId, boolean>> {
   try {
     const response = await fetch("/api/payment-options");

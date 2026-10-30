@@ -27,6 +27,9 @@ export interface Branch {
   address: string | null;
   /** Google Maps link for "Get directions". */
   mapsUrl: string | null;
+  /** Map position, for search engines. */
+  geo: { lat: number; lng: number } | null;
+  postalCode: string;
   /** Public rating, as shown on the listing it came from. */
   rating: { score: number; count: number; source: string; url: string } | null;
   /** Month and year the branch opened, e.g. "Nov 2023". */
@@ -46,6 +49,8 @@ export const BRANCHES: Record<BranchId, Branch> = {
     address:
       "2nd Floor, Center 1 Building, opp. Sangli District Court, near Auram Cinema, Vijaynagar Phata, Sangli 416415",
     mapsUrl: "https://www.google.com/maps?q=16.843847,74.610004",
+    geo: { lat: 16.843847, lng: 74.610004 },
+    postalCode: "416415",
     rating: {
       score: 5.0,
       count: 8,
@@ -65,6 +70,8 @@ export const BRANCHES: Record<BranchId, Branch> = {
     address:
       "Near Bank of Maharashtra, Malkapur Phata, NH4 Kolhapur Road (opp. Krishna Hospital), Malkapur, Karad 415539",
     mapsUrl: "https://www.google.com/maps?q=17.2580384,74.1775719",
+    geo: { lat: 17.2580384, lng: 74.1775719 },
+    postalCode: "415539",
     rating: {
       score: 4.9,
       count: 258,
@@ -114,3 +121,8 @@ export function branchHours(branch: BranchId): string {
 
 /** How far ahead a guest may book. */
 export const MAX_DAYS_AHEAD = 60;
+
+/** A paid booking cancelled at least this long before its start is refunded
+    in full. A business decision for the owner — the refund policy page and
+    online cancellation both read it. */
+export const CANCEL_HOURS = 4;
