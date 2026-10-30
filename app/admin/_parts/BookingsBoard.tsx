@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Copy, Download, Loader2, MessageCircle, Phone, Search, Sparkles, X } from "lucide-react";
+import { CalendarClock, Check, Copy, Download, Loader2, MessageCircle, Phone, Search, Sparkles, X } from "lucide-react";
 import { BRANCHES } from "@/lib/branches";
 import {
   CARD,
@@ -42,6 +42,7 @@ export default function BookingsBoard({
   fresh,
   busyRef,
   onChangeStatus,
+  onMove,
   query,
   onQuery,
   statusFilter,
@@ -51,6 +52,7 @@ export default function BookingsBoard({
   fresh: Set<string>;
   busyRef: string | null;
   onChangeStatus: (b: Booking, to: Status) => void;
+  onMove: (b: Booking) => void;
   query: string;
   onQuery: (q: string) => void;
   statusFilter: StatusFilter;
@@ -290,6 +292,15 @@ export default function BookingsBoard({
                           <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
                         </a>
                         <span className="flex-1" />
+                        {(b.status === "pending_confirmation" || b.status === "confirmed") && (
+                          <button
+                            disabled={busyRef === b.reference}
+                            onClick={() => onMove(b)}
+                            className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/15 px-3.5 py-2 text-sm transition-colors hover:border-[#c5a880]/60 disabled:opacity-50"
+                          >
+                            <CalendarClock className="h-3.5 w-3.5" /> Move
+                          </button>
+                        )}
                         {ACTIONS[b.status].map((action) => (
                           <button
                             key={action.to}

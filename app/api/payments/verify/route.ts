@@ -63,6 +63,9 @@ export async function POST(request: Request) {
     await recordCapturedPayment(payment, paymentId, razorpayPayment.amount, razorpayPayment.method ?? null);
 
     const { data: updated } = await db().from("bookings").select("status").eq("id", payment.booking_id).single();
+    // Paid, but the booking was cancelled first (expired, or the room was
+    // taken after the hold lapsed): the guest must not see "confirmed".
+    if (updated?.status === "cancelled") return fail("SLOT_TAKEN", 409);
     return NextResponse.json({ ok: true, reference, status: updated?.status ?? "confirmed" });
   } catch (error) {
     log.error("payment.verify_failed", error, { reference, orderId });

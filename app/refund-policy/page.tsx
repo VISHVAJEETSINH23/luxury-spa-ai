@@ -1,22 +1,18 @@
 import type { Metadata } from "next";
 import LegalPage from "@/components/LegalPage";
+import { CANCEL_HOURS } from "@/lib/branches";
 
 export const metadata: Metadata = { title: "Cancellation & Refund Policy | Alexa Salon & Spa" };
 
-/**
- * The hours below are a business decision for the owner — change
- * CANCEL_HOURS if the spa wants a different window.
- */
-const CANCEL_HOURS = 4;
-
 export default function RefundPolicyPage() {
   return (
-    <LegalPage title="Cancellation & Refund Policy" updated="27 October 2026">
+    <LegalPage title="Cancellation & Refund Policy" updated="29 October 2026">
       <h2>Cancelling a booking</h2>
       <ul>
         <li>
-          To cancel or change a booking, call or WhatsApp the branch you booked with and give your booking
-          reference (for example SNG-4F2K9C or KRD-7M3P2Q).
+          To cancel, open <a href="/booking" className="text-[#c5a880] underline">Manage booking</a> and enter your booking reference (for example
+          SNG-4F2K9C or KRD-7M3P2Q) and mobile number. To change the time, call or WhatsApp the branch you booked
+          with and give your reference.
         </li>
         <li>
           Cancel at least {CANCEL_HOURS} hours before your appointment and an online payment is refunded in full.

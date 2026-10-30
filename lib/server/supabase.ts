@@ -36,7 +36,8 @@ export interface BookingRow {
   booking_date: string;
   slot_time: string;
   guest_name: string;
-  guest_phone: string;
+  /** Null once the guest's details are removed after the retention period. */
+  guest_phone: string | null;
   guest_email: string | null;
   notes: string | null;
   therapist_pref: "female" | "male" | "any";

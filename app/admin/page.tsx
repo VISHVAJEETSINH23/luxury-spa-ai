@@ -10,7 +10,18 @@ import Customers from "./_parts/Customers";
 import Insights from "./_parts/Insights";
 import Pulse from "./_parts/Pulse";
 import WalkInModal from "./_parts/WalkInModal";
-import { addDays, dayLabel, indiaToday, needsAttention, type Booking, type BranchFilter, type Status } from "./_parts/shared";
+import RescheduleModal from "./_parts/RescheduleModal";
+import {
+  addDays,
+  bookingWhatsapp,
+  dayLabel,
+  indiaToday,
+  needsAttention,
+  openMessageTab,
+  type Booking,
+  type BranchFilter,
+  type Status,
+} from "./_parts/shared";
 
 type Tab = "pulse" | "bookings" | "customers" | "insights";
 
@@ -41,6 +52,7 @@ export default function AdminPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [fresh, setFresh] = useState<Set<string>>(new Set());
   const [walkInOpen, setWalkInOpen] = useState(false);
+  const [moving, setMoving] = useState<Booking | null>(null);
   const [boardQuery, setBoardQuery] = useState("");
   const [boardStatus, setBoardStatus] = useState<StatusFilter>("all");
 
@@ -79,7 +91,10 @@ export default function AdminPage() {
     } catch {
       // ignore
     }
-    if (next) playLuxuryBookingChime();
+    if (next) {
+      playLuxuryBookingChime();
+      if ("Notification" in window && Notification.permission === "default") void Notification.requestPermission();
+    }
   };
 
   const load = useCallback(async () => {
@@ -107,6 +122,13 @@ export default function AdminPage() {
               : `${arrived.length} new bookings`
           );
           if (soundOnRef.current) playLuxuryBookingChime();
+          // Dashboard in a background tab: a system notification as well.
+          if (document.hidden && "Notification" in window && Notification.permission === "granted") {
+            new Notification("Alexa Spa — new booking", {
+              body: `${first.guest_name} · ${BRANCHES[first.branch].city} · ${dayLabel(first.booking_date)} ${formatSlot(first.slot_time.slice(0, 5))}`,
+              tag: "alexa-new-booking",
+            });
+          }
         }
       }
       seenRef.current = new Set(list.map((b) => b.id));
@@ -137,6 +159,8 @@ export default function AdminPage() {
 
   const changeStatus = async (b: Booking, to: Status) => {
     if (to === "cancelled" && !window.confirm(`Cancel ${b.guest_name}'s booking (${b.reference})?`)) return;
+    // Confirming or cancelling tells the guest on WhatsApp, ready to send.
+    const message = to === "confirmed" || to === "cancelled" ? openMessageTab() : null;
     setBusyRef(b.reference);
     try {
       const response = await fetch(`/api/admin/bookings/${b.reference}`, {
@@ -145,10 +169,18 @@ export default function AdminPage() {
         body: JSON.stringify({ status: to }),
       });
       if (response.status === 401) {
+        message?.cancel();
         window.location.replace("/admin/login");
         return;
       }
-      if (!response.ok) window.alert("That change didn't go through. The list will refresh.");
+      if (response.ok) {
+        message?.send(bookingWhatsapp({ ...b, status: to }));
+      } else {
+        message?.cancel();
+        window.alert("That change didn't go through. The list will refresh.");
+      }
+    } catch {
+      message?.cancel();
     } finally {
       setBusyRef(null);
       void load();
@@ -359,6 +391,7 @@ export default function AdminPage() {
               fresh={fresh}
               busyRef={busyRef}
               onChangeStatus={(b, to) => void changeStatus(b, to)}
+              onMove={setMoving}
               query={boardQuery}
               onQuery={setBoardQuery}
               statusFilter={boardStatus}
@@ -386,6 +419,18 @@ export default function AdminPage() {
           onCreated={(reference) => {
             setWalkInOpen(false);
             setToast(`Booking ${reference} saved`);
+            void load();
+          }}
+        />
+      )}
+
+      {moving && (
+        <RescheduleModal
+          booking={moving}
+          onClose={() => setMoving(null)}
+          onMoved={(moved) => {
+            setMoving(null);
+            setToast(`${moved.reference} moved to ${dayLabel(moved.booking_date)} ${formatSlot(moved.slot_time.slice(0, 5))}`);
             void load();
           }}
         />

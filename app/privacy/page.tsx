@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import LegalPage from "@/components/LegalPage";
+import { RETENTION_MONTHS } from "@/lib/server/retention";
 
 export const metadata: Metadata = { title: "Privacy Policy | Alexa Salon & Spa" };
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="27 October 2026">
+    <LegalPage title="Privacy Policy" updated="29 October 2026">
       <p>
         This explains what Alexa Salon & Spa (Sangli and Karad) collects when you book on this website, why, and what you
         can ask us to do with it, in line with India&apos;s Digital Personal Data Protection Act, 2023.
@@ -32,8 +33,13 @@ export default function PrivacyPage() {
       <h2>Where it is kept</h2>
       <p>
         Booking records are stored in a secured database hosted in India (Mumbai). Only the spa owner can see them,
-        through a password-protected page. Records are kept for as long as needed to run your booking and for the
-        period the law requires for business accounts.
+        through a password-protected page. When a new booking arrives, the owner gets an alert on their phone with
+        your name, therapy and time (never your number).
+      </p>
+      <p>
+        Your name, mobile number, email and note are removed {RETENTION_MONTHS} months after your appointment. After
+        that we keep only an anonymous record — branch, therapy, date and amount — for our accounts, as the law
+        requires. Encrypted backups are kept for 30 days and then deleted.
       </p>
 
       <h2>The chat assistant</h2>
@@ -50,7 +56,11 @@ export default function PrivacyPage() {
 
       <h2>Your rights</h2>
       <p>
-        You can ask us to show you, correct, or delete the details we hold about you, or withdraw your consent, by
+        You can see or cancel your booking yourself at{" "}
+        <a href="/booking" className="text-[#c5a880] underline">
+          Manage booking
+        </a>
+        . You can ask us to show you, correct, or delete the details we hold about you, or withdraw your consent, by
         contacting your branch below. We will respond within 30 days.
       </p>
     </LegalPage>

@@ -12,7 +12,13 @@ or choose to pay at the spa. The owner sees and manages every booking at
 1. `POST /api/bookings` validates everything server-side — branch, therapy,
    length, date, slot, phone — and takes the **price from the menu**
    (`lib/treatments.ts`). Nothing the browser says about money is read.
-2. **Pay at spa** → saved as `pending_confirmation`; the owner confirms it.
+   Before that, the form greys out times where every room is taken
+   (`GET /api/availability`).
+2. **Pay at spa** → saved as `pending_confirmation`, and the open dashboard chimes
+   (plus a system notification if it's in a background tab). The owner checks the room and presses
+   Confirm on the board, which opens WhatsApp with the confirmation ready to
+   send to the guest. Cancel and Move (reschedule) work the same way.
+   Leave the Razorpay keys blank and this is the only way to book.
 3. **Pay online** → saved as `pending_payment`, and a Razorpay order is opened
    on that branch's account. The guest pays in Razorpay Checkout.
 4. `POST /api/payments/verify` checks the signature with the branch's secret
@@ -52,7 +58,7 @@ Browser ──► Vercel, Mumbai (bom1)
               │                └────────► Razorpay (Sangli / Karad accounts)
               ├─ /api/ai/concierge ─────► Gemini   (cache + budget in Upstash)
               ├─ /api/webhooks/razorpay/[branch] ◄── Razorpay
-              ├─ /api/cron/expire-bookings ◄── Vercel Cron (daily)
+              ├─ /api/cron/daily ◄── Vercel Cron (expire unpaid, remove old guest details)
               ├─ /api/health ◄── uptime monitor
               └─ /admin (owner only)
 GitHub Actions ──► CI on every push · encrypted DB backup every night
@@ -81,7 +87,10 @@ every push and pull request.
 | Logs | Vercel → Logs. One JSON object per line: filter by `event`, e.g. `booking.created`, `payment.captured`, `webhook.failed`. |
 | Uptime | Point UptimeRobot / Better Stack at `https://<domain>/api/health` every 5 min. 503 means the database is unreachable. |
 | Traffic & speed | Vercel → Analytics and Speed Insights (enable both in the project). |
-| Unpaid bookings | Cancelled after 90 min — by the daily cron and whenever the owner opens `/admin`. A room is released after 30 min. |
+| Unpaid bookings | Cancelled after 90 min — by the daily cron and whenever the owner opens `/admin`. A room is released after 30 min; a payment arriving after that confirms the booking only if the room is still free, otherwise it shows as "Paid · refund due". |
+| Guest details | Name, phone, email and notes are blanked 24 months after the appointment by the daily cron (`RETENTION_MONTHS` in `lib/server/retention.ts`). |
+| Owner alerts | The open dashboard checks every 30 s, chimes on a new booking and shows a system notification when in a background tab. |
+| Guests | `/booking` — a guest enters reference + mobile to see their booking and cancel it. |
 | Room count | `update public.branch_capacity set rooms = N where branch = 'karad';` |
 | Hero frames | `public/frames/*.webp` (desktop, 1440px) and `public/frames/m/` (phones, 768px). Rebuild from JPGs with `node scripts/convert-frames.mjs`. |
 

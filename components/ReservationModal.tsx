@@ -14,7 +14,14 @@ import {
   slotFits,
   type BranchId,
 } from "@/lib/branches";
-import { createBooking, fetchPaymentOptions, openCheckout, verifyPayment, type CheckoutDetails } from "@/lib/bookings";
+import {
+  createBooking,
+  fetchFullSlots,
+  fetchPaymentOptions,
+  openCheckout,
+  verifyPayment,
+  type CheckoutDetails,
+} from "@/lib/bookings";
 import FallbackImage from "@/components/ui/FallbackImage";
 import { readSelectedBranch, setSelectedBranch } from "@/lib/selectedBranch";
 
@@ -90,7 +97,9 @@ function prettyDate(iso: string): string {
 type Outcome =
   | { kind: "paid"; reference: string }
   | { kind: "requested"; reference: string }
-  | { kind: "unpaid"; reference: string; payment: CheckoutDetails; message: string };
+  | { kind: "unpaid"; reference: string; payment: CheckoutDetails; message: string }
+  /** Paid, but after the room was let go — the spa refunds or moves them. */
+  | { kind: "slot_taken"; reference: string };
 
 export default function ReservationModal({ isOpen, onClose, initialExperience, initialMinutes }: ReservationModalProps) {
   const [mounted, setMounted] = useState(false);
@@ -134,10 +143,25 @@ export default function ReservationModal({ isOpen, onClose, initialExperience, i
     );
   }, [date, today, option.minutes, branch]);
 
-  // A slot that no longer fits (new date, longer therapy) is dropped.
+  // Times where every room is already taken, greyed out before the guest
+  // types their details. A guess, refreshed on every change; the server
+  // still has the final word when the booking is saved.
+  const [fullSlots, setFullSlots] = useState<string[]>([]);
+  const [availabilityTick, setAvailabilityTick] = useState(0);
   useEffect(() => {
-    if (slot && !availableSlots.includes(slot)) setSlot(null);
-  }, [availableSlots, slot]);
+    setFullSlots([]);
+    if (!isOpen || !branch) return;
+    let current = true;
+    void fetchFullSlots(branch, date, option.minutes).then((full) => current && setFullSlots(full));
+    return () => {
+      current = false;
+    };
+  }, [isOpen, branch, date, option.minutes, availabilityTick]);
+
+  // A slot that no longer fits (new date, longer therapy, just filled up) is dropped.
+  useEffect(() => {
+    if (slot && (!availableSlots.includes(slot) || fullSlots.includes(slot))) setSlot(null);
+  }, [availableSlots, fullSlots, slot]);
 
   // Late in the day nothing is left today: start the guest on tomorrow
   // instead of showing an empty list.
@@ -240,12 +264,19 @@ export default function ReservationModal({ isOpen, onClose, initialExperience, i
       return;
     }
     if (result === "dismissed") {
-      setOutcome({ kind: "unpaid", reference, payment, message: "Payment wasn't completed. You can try again now — this booking stays open for 30 minutes." });
+      setOutcome({
+        kind: "unpaid",
+        reference,
+        payment,
+        message: "Payment wasn't completed. Your room is held for 30 minutes from booking — pay within that time to keep it.",
+      });
       return;
     }
     const verified = await verifyPayment({ reference, ...result });
     if (verified.ok) {
       setOutcome({ kind: "paid", reference });
+    } else if (verified.error === "SLOT_TAKEN") {
+      setOutcome({ kind: "slot_taken", reference });
     } else {
       // The webhook will still confirm it if the money did arrive.
       setOutcome({
@@ -290,6 +321,13 @@ export default function ReservationModal({ isOpen, onClose, initialExperience, i
       });
 
       if (!result.ok) {
+        if (result.error === "SLOT_FULL") {
+          // Taken while they were typing: back to the times, now greyed out.
+          setAvailabilityTick((t) => t + 1);
+          setStep("when");
+          setErrors({ slot: ERROR_TEXT.SLOT_FULL });
+          return;
+        }
         const down = !ERROR_TEXT[result.error];
         setServerDown(down);
         setFormError(
@@ -375,7 +413,7 @@ export default function ReservationModal({ isOpen, onClose, initialExperience, i
           /* ---------------- result ---------------- */
           <div className="flex flex-1 flex-col items-center justify-center text-center gap-6 p-8 sm:p-14 overflow-y-auto">
             <div className="w-14 h-14 rounded-full bg-[#c5a880]/15 border border-[#c5a880]/40 flex items-center justify-center">
-              {outcome.kind === "unpaid" ? (
+              {outcome.kind === "unpaid" || outcome.kind === "slot_taken" ? (
                 <CreditCard className="w-7 h-7 text-[#c5a880]" />
               ) : (
                 <CheckCircle2 className="w-7 h-7 text-[#c5a880]" />
@@ -399,14 +437,30 @@ export default function ReservationModal({ isOpen, onClose, initialExperience, i
                     Payment <span className="italic text-[#c5a880]">pending</span>
                   </>
                 )}
+                {outcome.kind === "slot_taken" && (
+                  <>
+                    Slot <span className="italic text-[#c5a880]">no longer free</span>
+                  </>
+                )}
               </h2>
               <p className="text-base font-sans text-[#f0e9df]/80 max-w-md leading-relaxed">
                 {outcome.kind === "paid" &&
                   `Paid ${formatRupees(price)} online. See you at ${branchInfo?.name}.`}
                 {outcome.kind === "requested" &&
-                  `${branchInfo?.name} will call or WhatsApp you to confirm the slot. You pay ${formatRupees(price)} at the spa.`}
+                  `${branchInfo?.name} will check the room and WhatsApp you to confirm. You pay ${formatRupees(price)} at the spa.`}
                 {outcome.kind === "unpaid" && outcome.message}
+                {outcome.kind === "slot_taken" &&
+                  `Your payment of ${formatRupees(price)} arrived after the room was given to someone else. The spa will refund it in full, or move you to another time — WhatsApp them with your reference.`}
               </p>
+              {outcome.kind !== "unpaid" && (
+                <p className="font-sans text-sm text-[#e8ded2]/55">
+                  Check or cancel it any time at{" "}
+                  <a href={`/booking?ref=${outcome.reference}`} target="_blank" className="text-[#c5a880] underline underline-offset-4">
+                    Manage booking
+                  </a>
+                  .
+                </p>
+              )}
             </div>
 
             <div className="px-7 py-4 border-y border-[#c5a880]/25">
@@ -636,21 +690,42 @@ export default function ReservationModal({ isOpen, onClose, initialExperience, i
                       </p>
                     ) : (
                       <div className="grid max-w-3xl grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
-                        {availableSlots.map((s) => (
-                          <button
-                            key={s}
-                            type="button"
-                            onClick={() => {
-                              setSlot(s);
-                              setErrors({});
-                            }}
-                            aria-pressed={s === slot}
-                            className={choiceClass(s === slot)}
-                          >
-                            <span className="block font-mono text-base tabular-nums">{formatSlot(s)}</span>
-                          </button>
-                        ))}
+                        {availableSlots.map((s) => {
+                          const full = fullSlots.includes(s);
+                          return (
+                            <button
+                              key={s}
+                              type="button"
+                              disabled={full}
+                              onClick={() => {
+                                setSlot(s);
+                                setErrors({});
+                              }}
+                              aria-pressed={s === slot}
+                              className={`${choiceClass(s === slot)} disabled:cursor-not-allowed disabled:opacity-35`}
+                            >
+                              <span className={`block font-mono text-base tabular-nums ${full ? "line-through" : ""}`}>
+                                {formatSlot(s)}
+                              </span>
+                              {full && (
+                                <span className="block font-mono text-[10px] uppercase tracking-[0.18em] text-[#e0785e]">Full</span>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
+                    )}
+                    {availableSlots.length > 0 && availableSlots.every((s) => fullSlots.includes(s)) && (
+                      <p className="mt-3 font-sans text-sm text-[#e8ded2]/60">
+                        Every room is booked on this date.{" "}
+                        <button
+                          type="button"
+                          onClick={() => setDate(addDays(date, 1))}
+                          className="cursor-pointer text-[#c5a880] underline underline-offset-4"
+                        >
+                          See the next day
+                        </button>
+                      </p>
                     )}
                     {errors.slot && <span className="mt-2 block text-[12px] text-[#e0785e]">{errors.slot}</span>}
                   </div>

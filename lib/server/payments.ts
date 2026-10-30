@@ -36,6 +36,19 @@ export async function recordCapturedPayment(
     .update({ status: "confirmed" })
     .eq("id", payment.booking_id)
     .eq("status", "pending_payment");
+  if (bookingError?.message === "SLOT_FULL") {
+    // Paid after the 30-minute hold lapsed, and the room went to someone
+    // else meanwhile. Not an error to retry: the booking is cancelled and the
+    // board shows it as "paid, refund due".
+    const { error: cancelError } = await supabase
+      .from("bookings")
+      .update({ status: "cancelled" })
+      .eq("id", payment.booking_id)
+      .eq("status", "pending_payment");
+    if (cancelError) throw new Error(`bookings cancel failed: ${cancelError.code}`);
+    log.warn("payment.slot_taken", { orderId: payment.razorpay_order_id, branch: payment.branch });
+    return;
+  }
   if (bookingError) throw new Error(`bookings update failed: ${bookingError.code}`);
   log.info("payment.captured", { orderId: payment.razorpay_order_id, branch: payment.branch });
 }
