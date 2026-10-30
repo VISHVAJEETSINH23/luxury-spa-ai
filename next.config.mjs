@@ -1,31 +1,7 @@
 import { withSentryConfig } from "@sentry/nextjs/config";
 
-const isDev = process.env.NODE_ENV !== "production";
-
-/**
- * Content Security Policy. Everything is served from this site except
- * Razorpay Checkout, which loads its script and payment frames from
- * *.razorpay.com. 'unsafe-inline' scripts are needed for Next's inline
- * bootstrapping; 'unsafe-eval' only in development for React Refresh.
- */
-const csp = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' https://checkout.razorpay.com${isDev ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.razorpay.com",
-  "font-src 'self' data:",
-  "media-src 'self' blob:",
-  "connect-src 'self' https://*.razorpay.com",
-  "frame-src https://api.razorpay.com https://checkout.razorpay.com",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self' https://api.razorpay.com",
-  "frame-ancestors 'none'",
-  ...(isDev ? [] : ["upgrade-insecure-requests"]),
-].join("; ");
-
+// The Content-Security-Policy is per request: see lib/csp.ts and proxy.ts.
 const securityHeaders = [
-  { key: "Content-Security-Policy", value: csp },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },

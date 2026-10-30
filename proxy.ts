@@ -1,19 +1,34 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { contentSecurityPolicy } from "@/lib/csp";
 import { SESSION_COOKIE, isActiveSessionToken } from "@/lib/server/session";
 
+/** Lets the request through with a fresh script nonce for this page load. */
+function pass(request: NextRequest) {
+  const nonce = btoa(crypto.randomUUID());
+  const csp = contentSecurityPolicy(nonce);
+  const headers = new Headers(request.headers);
+  headers.set("x-nonce", nonce);
+  headers.set("Content-Security-Policy", csp);
+  const response = NextResponse.next({ request: { headers } });
+  response.headers.set("Content-Security-Policy", csp);
+  return response;
+}
+
 /**
- * Front gate for everything owner-only. The admin route handlers check the
- * session again themselves — this is the first lock, not the only one.
+ * Sets the CSP on every page, and is the front gate for everything owner-only.
+ * The admin route handlers check the session again themselves — this is the
+ * first lock, not the only one.
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const ownerOnly = pathname.startsWith("/admin") || pathname.startsWith("/api/admin");
 
-  if (pathname === "/admin/login" || pathname === "/api/admin/login") {
-    return NextResponse.next();
+  if (!ownerOnly || pathname === "/admin/login" || pathname === "/api/admin/login") {
+    return pass(request);
   }
 
   if (await isActiveSessionToken(request.cookies.get(SESSION_COOKIE)?.value)) {
-    return NextResponse.next();
+    return pass(request);
   }
 
   if (pathname.startsWith("/api/")) {
@@ -25,5 +40,6 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/admin/:path*"],
+  // Pages and owner APIs; not static files or the public JSON APIs.
+  matcher: ["/((?!_next/static|_next/image|frames/|images/|audio/|video/|logo.png|favicon|robots.txt|sitemap.xml|api/(?!admin)).*)"],
 };
