@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Cormorant_Garamond, Plus_Jakarta_Sans } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -101,11 +102,14 @@ const structuredData = BRANCH_LIST.map((branch) => ({
   currenciesAccepted: "INR",
 }));
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Reading the request renders every page per request, so each gets its CSP nonce.
+  await headers();
+
   return (
     <html lang="en" className={`${cormorant.variable} ${jakarta.variable}`}>
       <body className="bg-[#07090b] text-[#f7f4ee] font-sans antialiased overflow-x-hidden selection:bg-[#c5a880]/30 selection:text-[#f7f4ee]">
