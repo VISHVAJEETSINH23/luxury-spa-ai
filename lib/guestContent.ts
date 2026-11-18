@@ -38,61 +38,102 @@ export interface GuestReview {
   /** As shown on Justdial, e.g. "06 May 2025". */
   date: string;
   text: string;
+  tag?: string;
+  category?: "hygiene" | "service" | "value";
+  rating?: number;
 }
+
+export const AMENITIES = [
+  "100% Private Therapy Suites",
+  "Attached Hot Water Showers",
+  "Fresh Single-Use Towels & Linen",
+  "Calming Essential Oil Aromatherapy",
+  "Climate Controlled AC Cabins",
+  "Couple Massage Jacuzzi Suites",
+  "Certified & Verified Therapists",
+  "Safe Family & Couple Environment",
+];
 
 export const GUEST_REVIEWS: GuestReview[] = [
   {
     name: "Hajare",
     branch: "sangli",
     date: "08 Oct 2026",
+    tag: "Polite & Attentive Staff",
+    category: "service",
+    rating: 5,
     text: "The staff was incredibly polite and attentive, making me feel welcomed from the moment I arrived. The serene ambiance added to the overall experience, leaving me rejuvenated and satisfied.",
   },
   {
     name: "Mr Ganesh Namdev Kadam",
     branch: "sangli",
     date: "30 Sep 2026",
+    tag: "Serene & Relaxing Ambience",
+    category: "service",
+    rating: 5,
     text: "The relaxing ambience instantly put me at ease. From haircuts to body treatments, the skilled staff provided top-notch care. It's the perfect blend of quality and affordability!",
   },
   {
     name: "Mr Sachin Yadav",
     branch: "sangli",
     date: "07 Oct 2026",
+    tag: "Clean, Maintained & Affordable",
+    category: "hygiene",
+    rating: 5,
     text: "The prices are very reasonable, making it easy to enjoy their services without breaking the bank. Everything looked well-maintained and hygienic. The staff was friendly and professional.",
   },
   {
     name: "Sumit Oswal",
     branch: "karad",
     date: "06 May 2025",
+    tag: "Stress Relief & Rejuvenation",
+    category: "service",
+    rating: 5,
     text: "The ambiance is soothing, and the staff is incredibly professional. I opted for their signature facial and a massage, both of which yielded excellent results. My skin feels rejuvenated, and the stress just melted away.",
   },
   {
     name: "Manthan",
     branch: "karad",
     date: "03 May 2025",
+    tag: "Pampered & Luxurious",
+    category: "service",
+    rating: 5,
     text: "The place feels very luxurious and special. The lights are soft, and the music is calming. You can relax and forget your worries. I loved my treatment — I felt pampered and happy.",
   },
   {
     name: "Shruti Kadam",
     branch: "karad",
     date: "28 Jun 2025",
+    tag: "Extreme Cleanliness & Hygiene",
+    category: "hygiene",
+    rating: 5,
     text: "The salon is extremely clean, and all the equipment looks brand new. They pay great attention to hygiene, which made me feel very safe during my visit.",
   },
   {
     name: "Yashodhan Vadar",
     branch: "karad",
     date: "29 Sep 2026",
+    tag: "Attentive & Expert Guidance",
+    category: "service",
+    rating: 5,
     text: "The knowledgeable staff truly made a difference; they were attentive and provided personalized recommendations tailored to my needs. The ambiance was soothing, adding to the overall relaxation.",
   },
   {
     name: "Ajit Mane",
     branch: "karad",
     date: "13 Apr 2025",
+    tag: "Clean Equipment & Experienced",
+    category: "hygiene",
+    rating: 5,
     text: "The staff is very experienced and made me feel comfortable. The equipment was clean, which I really liked. I got a facial and scrub done, and it was wonderful!",
   },
   {
     name: "Sagar Patil",
     branch: "karad",
     date: "28 Jun 2025",
+    tag: "Quality Care & Friendly Staff",
+    category: "value",
+    rating: 5,
     text: "The results are excellent every time I visit. My hair looks great, and my skin feels so soft after a spa treatment. The staff is friendly and always helpful.",
   },
 ];

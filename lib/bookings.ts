@@ -98,6 +98,26 @@ export interface GuestBooking {
   cancelBlockedBy: "NOT_ACTIVE" | "STARTED" | "TOO_LATE_FOR_REFUND" | null;
 }
 
+const MY_BOOKING_KEY = "alexa-my-booking";
+
+/** Kept on the guest's own device, so "My Booking" opens with nothing to type. */
+export function rememberBooking(reference: string, phone: string) {
+  try {
+    localStorage.setItem(MY_BOOKING_KEY, JSON.stringify({ reference, phone }));
+  } catch {
+    // ignore
+  }
+}
+
+export function rememberedBooking(): { reference: string; phone: string } | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(MY_BOOKING_KEY) ?? "null");
+    return typeof saved?.reference === "string" && typeof saved?.phone === "string" ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
 /** A guest's own booking, by reference and mobile number. */
 export async function manageBooking(
   action: "view" | "cancel",

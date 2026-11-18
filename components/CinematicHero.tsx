@@ -402,15 +402,15 @@ export default function CinematicHero({
         loadSingleImage(i);
       }
 
-      // Lenis Smooth Scroll Setup optimized for Mobile Touch
+      // Lenis Smooth Scroll Setup optimized for Mobile Touch (4 clean swipes to completion)
       const lenis = new Lenis({
-        duration: isTouch ? 1.0 : 1.6,
+        duration: isTouch ? 0.75 : 1.3,
         easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
         orientation: "vertical",
         gestureOrientation: "vertical",
         smoothWheel: true,
         wheelMultiplier: 0.85,
-        touchMultiplier: isTouch ? 1.5 : 1.2,
+        touchMultiplier: isTouch ? 1.6 : 1.2,
         // Forms, dialogs and chat panels scroll natively — no glide or drag.
         prevent: (node) => !!node.closest?.("form, [role='dialog'], [aria-modal='true'], [data-lenis-prevent]"),
       });
@@ -450,7 +450,7 @@ export default function CinematicHero({
           const mouseYDelta = p.targetMouseY - p.mouseY;
 
           // Responsive interpolation factor (faster response on mobile)
-          const interpRate = isMobile ? 0.22 : 0.15;
+          const interpRate = isMobile ? 0.32 : 0.18;
           p.currentFrame += frameDelta * interpRate;
           p.mouseX += mouseXDelta * 0.08;
           p.mouseY += mouseYDelta * 0.08;
@@ -473,13 +473,14 @@ export default function CinematicHero({
       };
       rafId = requestAnimationFrame(liquidLoop);
 
+      // Fast, engaging 4-swipe hero journey
       const st = ScrollTrigger.create({
         trigger: containerRef.current,
         start: "top top",
-        end: "+=700%",
+        end: isTouch ? "+=240%" : "+=360%",
         pin: viewportRef.current,
         pinSpacing: true,
-        scrub: isTouch ? 0.4 : 0.8,
+        scrub: isTouch ? 0.3 : 0.6,
         anticipatePin: 1,
         fastScrollEnd: true,
         onUpdate: (self) => {
@@ -643,7 +644,7 @@ export default function CinematicHero({
       */}
       <div
         ref={viewportRef}
-        className="relative w-screen h-screen overflow-hidden bg-[#07090b] flex items-center justify-center select-none"
+        className="relative w-screen h-screen h-[100dvh] overflow-hidden bg-[#07090b] flex items-center justify-center select-none"
       >
         {/* Liquid Sub-Frame Interpolated Retina Canvas */}
         <canvas
@@ -660,7 +661,7 @@ export default function CinematicHero({
           BOTTOM HUD: CHAPTER TICKER & LOCATION COORDINATES
           ======================================================================
         */}
-        <div className="absolute bottom-8 left-8 sm:bottom-10 sm:left-12 z-40 pointer-events-none flex items-center gap-4 text-xs">
+        <div className="absolute bottom-6 left-6 sm:bottom-10 sm:left-12 z-40 pointer-events-none flex items-center gap-4 text-xs">
           <span className="text-[11px] sm:text-xs font-mono tracking-widest text-[#d9bb8e] text-shade">
             {CHAPTERS[activeChapterIndex]?.actNumber || "ACT I"}
           </span>
@@ -670,7 +671,7 @@ export default function CinematicHero({
           </span>
         </div>
 
-        <div className="absolute bottom-8 right-8 sm:bottom-10 sm:right-12 z-40 pointer-events-none text-[10px] font-mono text-[#c5a880]/60 tracking-wider hidden sm:block">
+        <div className="absolute bottom-6 right-6 sm:bottom-10 sm:right-12 z-40 pointer-events-none text-[10px] font-mono text-[#c5a880]/60 tracking-wider hidden sm:block">
           SANCTUARY • ELEVATION 1,280M
         </div>
 
@@ -679,7 +680,7 @@ export default function CinematicHero({
           RIGHT PROGRESS TRACKER
           ======================================================================
         */}
-        <div className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 z-40 pointer-events-none flex flex-col items-center gap-2">
+        <div className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-40 pointer-events-none flex flex-col items-center gap-2">
           <div className="w-[1.5px] h-28 bg-white/10 rounded-full overflow-hidden relative backdrop-blur-sm">
             <div
               className="w-full bg-[#c5a880] transition-all duration-75 rounded-full"
@@ -708,7 +709,7 @@ export default function CinematicHero({
             <span className="w-8 h-px bg-[#c5a880]/50" />
           </div>
 
-          <h1 className="text-7xl sm:text-9xl md:text-[11rem] font-serif font-extralight tracking-[0.22em] text-[#f7f4ee] uppercase leading-[0.9] text-shade-strong">Alexa</h1>
+          <h1 className="text-6xl sm:text-9xl md:text-[11rem] font-serif font-extralight tracking-[0.18em] sm:tracking-[0.22em] text-[#f7f4ee] uppercase leading-[0.9] text-shade-strong">Alexa</h1>
 
           <p className="text-xl sm:text-3xl md:text-4xl font-serif italic font-light text-[#f0e9df] tracking-wide max-w-3xl text-shade-strong">
             Stillness, kept <span className="text-[#c5a880]">ready</span> for you.
@@ -726,7 +727,7 @@ export default function CinematicHero({
             ref={(el) => {
               chapterRefs.current[idx] = el;
             }}
-            className={`absolute inset-0 z-30 flex items-center p-6 sm:p-14 md:p-24 opacity-0 pointer-events-none ${
+            className={`absolute inset-0 z-30 flex items-center p-5 pt-20 pb-20 sm:p-14 md:p-24 opacity-0 pointer-events-none ${
               ch.alignment === "left"
                 ? "justify-start text-left"
                 : ch.alignment === "right"
@@ -759,7 +760,7 @@ export default function CinematicHero({
               </div>
 
               {/* Headline with Italic Luxury Contrast */}
-              <h2 className="text-4xl sm:text-6xl md:text-7xl font-serif font-light tracking-[0.02em] text-[#f7f4ee] leading-[1.08] text-balance text-shade-strong">
+              <h2 className="text-3xl sm:text-5xl md:text-7xl font-serif font-light tracking-[0.02em] text-[#f7f4ee] leading-[1.08] text-balance text-shade-strong">
                 <span>{ch.titlePrimary} </span>
                 <span className="italic font-light text-[#c5a880]">{ch.titleItalic}</span>
               </h2>
@@ -771,10 +772,10 @@ export default function CinematicHero({
 
               {/* Special CTA on the final chapter */}
               {idx === CHAPTERS.length - 1 && (
-                <div className="pt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
+                <div className="pt-6 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 pointer-events-auto">
                   <button
                     onClick={onOpenReservation}
-                    className="px-9 py-4 rounded-full bg-[#c5a880] text-[#07090b] font-sans text-[13px] tracking-[0.15em] font-bold uppercase hover:brightness-110 shadow-xl hover:shadow-[#c5a880]/30 hover:scale-105 transition-all cursor-pointer flex items-center gap-2"
+                    className="w-full sm:w-auto px-9 py-4 rounded-full bg-[#c5a880] text-[#07090b] font-sans text-[13px] tracking-[0.15em] font-bold uppercase hover:brightness-110 shadow-xl hover:shadow-[#c5a880]/30 hover:scale-105 transition-all cursor-pointer flex items-center justify-center gap-2"
                   >
                     <span>Book an appointment</span>
                     <span>→</span>
@@ -787,7 +788,7 @@ export default function CinematicHero({
                         el.scrollIntoView({ behavior: "smooth" });
                       }
                     }}
-                    className="px-8 py-4 rounded-full bg-[#0b0f12]/70 backdrop-blur-md border border-white/[0.14] text-[#e4d3ba] font-sans text-xs tracking-[0.15em] uppercase hover:bg-white/10 hover:border-[#c5a880] transition-all cursor-pointer flex items-center gap-1.5"
+                    className="w-full sm:w-auto px-8 py-4 rounded-full bg-[#0b0f12]/70 backdrop-blur-md border border-white/[0.14] text-[#e4d3ba] font-sans text-xs tracking-[0.15em] uppercase hover:bg-white/10 hover:border-[#c5a880] transition-all cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <span>VIEW SERVICES & PRICES</span>
                     <span className="text-xs font-bold animate-bounce">↓</span>
