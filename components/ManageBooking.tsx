@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Loader2, MapPin, MessageCircle, Phone } from "lucide-react";
 import { BRANCHES, CANCEL_HOURS, formatSlot } from "@/lib/branches";
-import { manageBooking, type GuestBooking } from "@/lib/bookings";
+import { manageBooking, rememberedBooking, type GuestBooking } from "@/lib/bookings";
 import { formatRupees } from "@/lib/treatments";
 
 const STATUS_TEXT: Record<GuestBooking["status"], { label: string; detail: string; tone: string }> = {
@@ -48,11 +48,11 @@ export default function ManageBooking() {
   const [error, setError] = useState("");
   const [justCancelled, setJustCancelled] = useState(false);
 
-  const run = async (action: "view" | "cancel") => {
+  const run = async (action: "view" | "cancel", ref = reference, mobile = phone) => {
     setBusy(true);
     setError("");
     try {
-      const result = await manageBooking(action, reference, phone);
+      const result = await manageBooking(action, ref, mobile);
       if (result.ok) {
         setBooking(result.booking);
         setJustCancelled(action === "cancel");
@@ -63,6 +63,17 @@ export default function ManageBooking() {
       setBusy(false);
     }
   };
+
+  // Booked on this phone: open their booking straight away.
+  useEffect(() => {
+    const saved = rememberedBooking();
+    const linked = params.get("ref")?.toUpperCase();
+    if (!saved || (linked && linked !== saved.reference)) return;
+    setReference(saved.reference);
+    setPhone(saved.phone);
+    void run("view", saved.reference, saved.phone);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const cancel = () => {
     if (!booking) return;
@@ -139,7 +150,7 @@ export default function ManageBooking() {
           <section className="space-y-6">
             {justCancelled && (
               <p className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 font-sans text-sm text-emerald-300">
-                Your booking is cancelled. The spa has been told.
+                Your booking is cancelled.
                 {booking.paid && " The spa will refund your payment to the account you paid from."}
               </p>
             )}

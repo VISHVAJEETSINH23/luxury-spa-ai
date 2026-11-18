@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Volume2, Sliders } from "lucide-react";
+import { CalendarCheck, Volume2, Sliders } from "lucide-react";
 import { scrollToSection, scrollToTop } from "@/lib/scroll";
 
 /** `section` is the element the link tracks while scrolling; `match` is the
@@ -90,19 +90,19 @@ export default function LuxuryNavbar({
   };
 
   return (
-    <header className="fixed inset-x-0 top-4 sm:top-5 z-50 flex justify-center px-4 select-none pointer-events-none">
+    <header className="fixed inset-x-0 top-3 sm:top-5 z-50 flex justify-center px-2.5 sm:px-4 select-none pointer-events-none">
       <div
         className={`pointer-events-auto flex items-center rounded-full border backdrop-blur-2xl transition-all duration-500 ${
           scrolled
-            ? "border-white/[0.09] bg-[#07090b]/85 py-2 pl-7 pr-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_22px_60px_-28px_rgba(0,0,0,0.95)]"
-            : "border-white/[0.07] bg-[#07090b]/55 py-2.5 pl-8 pr-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]"
+            ? "border-white/[0.09] bg-[#07090b]/85 py-2 pl-4 sm:pl-7 pr-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_22px_60px_-28px_rgba(0,0,0,0.95)]"
+            : "border-white/[0.07] bg-[#07090b]/55 py-2.5 pl-4 sm:pl-8 pr-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]"
         }`}
       >
         <Link href="/" className="group flex shrink-0 items-center cursor-pointer">
-          <span className="whitespace-nowrap font-serif text-xl sm:text-[1.6rem] font-light uppercase leading-none tracking-[0.34em] text-[#f7f4ee] transition-colors duration-300 group-hover:text-[#c5a880]">
+          <span className="whitespace-nowrap font-serif text-lg sm:text-[1.6rem] font-light uppercase leading-none tracking-[0.16em] sm:tracking-[0.34em] text-[#f7f4ee] transition-colors duration-300 group-hover:text-[#c5a880]">
             Alexa
           </span>
-          <span className="ml-[0.34em] whitespace-nowrap font-mono text-[9px] uppercase leading-none tracking-[0.34em] text-[#c5a880]/80">
+          <span className="ml-[0.34em] hidden sm:inline whitespace-nowrap font-mono text-[9px] uppercase leading-none tracking-[0.34em] text-[#c5a880]/80">
             Spa
           </span>
         </Link>
@@ -140,23 +140,32 @@ export default function LuxuryNavbar({
 
         <span className="hidden sm:block mx-4 lg:mx-6 h-5 w-px bg-white/[0.12]" />
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 ml-auto pl-2">
           {/* ASMR Soundscape Studio Trigger */}
           {onOpenAudioStudio && (
             <button
               onClick={onOpenAudioStudio}
               aria-label="Open ASMR Sanctuary Soundscape Mixer"
               title="ASMR Soundscape Studio"
-              className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-full border border-white/[0.12] bg-[#0b0f12]/80 hover:border-[#c5a880]/70 text-[#c5a880] transition-all duration-300 cursor-pointer group shadow-sm hover:scale-105"
+              className="hidden h-11 w-11 shrink-0 sm:flex items-center justify-center rounded-full border border-white/[0.12] bg-[#0b0f12]/80 hover:border-[#c5a880]/70 text-[#c5a880] transition-all duration-300 cursor-pointer group shadow-sm hover:scale-105"
             >
               <Sliders className="w-4 h-4 group-hover:rotate-12 transition-transform" />
             </button>
           )}
 
+          {/* The guest's own booking: always in view, phone included */}
+          <Link
+            href="/booking"
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-white/[0.14] bg-[#0b0f12]/80 px-2.5 sm:px-5 py-2.5 sm:py-3 font-sans text-[10px] font-medium uppercase tracking-[0.06em] sm:tracking-[0.2em] text-[#e4d3ba] transition-colors duration-300 hover:border-[#c5a880]/70"
+          >
+            <CalendarCheck className="hidden sm:block h-3.5 w-3.5 text-[#c5a880]" />
+            My Booking
+          </Link>
+
           {/* Reserve CTA */}
           <button
             onClick={onOpenReservation}
-            className="group relative shrink-0 overflow-hidden whitespace-nowrap rounded-full border border-[#c5a880]/50 px-6 sm:px-7 py-2.5 sm:py-3 font-sans text-[10px] font-medium uppercase tracking-[0.24em] text-[#e4d3ba] transition-colors duration-500 hover:text-[#07090b] cursor-pointer"
+            className="group relative shrink-0 overflow-hidden whitespace-nowrap rounded-full border border-[#c5a880]/50 px-3 sm:px-7 py-2.5 sm:py-3 font-sans text-[10px] font-medium uppercase tracking-[0.08em] sm:tracking-[0.24em] text-[#e4d3ba] transition-colors duration-500 hover:text-[#07090b] cursor-pointer"
           >
             <span
               aria-hidden
@@ -170,7 +179,7 @@ export default function LuxuryNavbar({
             onClick={onOpenMenu}
             aria-label="Open menu"
             title="Open menu"
-            className="group flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 flex-col items-center justify-center gap-[5px] rounded-full border border-white/[0.1] transition-colors duration-300 hover:border-[#c5a880]/60 cursor-pointer"
+            className="group flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 flex-col items-center justify-center gap-[5px] rounded-full border border-white/[0.1] transition-colors duration-300 hover:border-[#c5a880]/60 cursor-pointer"
           >
             <span className="h-px w-[17px] bg-[#e8ded2]/70 transition-all duration-300 group-hover:w-[13px] group-hover:bg-[#c5a880]" />
             <span className="h-px w-[11px] bg-[#e8ded2]/70 transition-all duration-300 group-hover:w-[17px] group-hover:bg-[#c5a880]" />

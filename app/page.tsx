@@ -80,10 +80,6 @@ export default function Home() {
   };
 
   const handleSelectMenuLink = (target: string) => {
-    if (target === "admin") {
-      window.location.href = "/admin";
-      return;
-    }
     // Goes through Lenis so the drawer glides to the section like the navbar.
     scrollToSection(target);
   };

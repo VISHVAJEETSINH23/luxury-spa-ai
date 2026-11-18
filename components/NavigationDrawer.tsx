@@ -20,7 +20,7 @@ const MENU_ITEMS = [
   },
   {
     num: "02",
-    title: "MASSAGE SERVICES & PRICES",
+    title: "SERVICES & PRICES",
     tagline: "MASSAGES, COUPLES & SCRUBS (FROM ₹2,000)",
     target: "rituals",
     description: "Dry, Aroma, Swedish, Deep Tissue, Signature and Four Hand massages, plus Body Scrub.",
@@ -34,17 +34,24 @@ const MENU_ITEMS = [
   },
   {
     num: "04",
+    title: "GUEST REVIEWS",
+    tagline: "VERIFIED REVIEWS (4.9★ ON JUSTDIAL)",
+    target: "reviews",
+    description: "Authentic word-for-word impressions from guests at our Sangli and Karad sanctuaries.",
+  },
+  {
+    num: "05",
+    title: "SANCTUARIES & MAPS",
+    tagline: "SANGLI & KARAD LOCATIONS & DIRECTIONS",
+    target: "contact",
+    description: "Find your nearest branch with live turn-by-turn Google Maps navigation, phone, and WhatsApp.",
+  },
+  {
+    num: "06",
     title: "BOOK AN APPOINTMENT",
     tagline: "INSTANT ONLINE & WHATSAPP PASS",
     target: "reservation",
     description: "Choose your date, time slot, preferred therapist gender, and receive an instant booking pass.",
-  },
-  {
-    num: "05",
-    title: "SPA OWNER CRM & ADMIN",
-    tagline: "REVENUE, SLOTS & AI STUDIO",
-    target: "admin",
-    description: "Executive operations dashboard, appointment roster, and AI WhatsApp campaign studio.",
   },
 ];
 
@@ -99,7 +106,7 @@ export default function NavigationDrawer({
     <div
       ref={drawerRef}
       data-lenis-prevent
-      className="fixed inset-0 z-[90] flex flex-col justify-between bg-[#07090b]/98 backdrop-blur-2xl text-[#f7f4ee] p-6 sm:p-12 md:p-16 select-none animate-fadeIn"
+      className="fixed inset-0 z-[90] flex flex-col justify-between bg-[#07090b]/98 backdrop-blur-2xl text-[#f7f4ee] p-5 sm:p-12 md:p-16 select-none animate-fadeIn overflow-y-auto"
     >
       {/* Top Header of Drawer */}
       <div className="flex items-center justify-between border-b border-white/10 pb-6">

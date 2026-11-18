@@ -64,6 +64,8 @@ export default function BookingsBoard({
   const today = indiaToday();
 
   const inRange = useMemo(() => {
+    // A search looks through every booking, whichever range is selected.
+    if (query.trim()) return bookings;
     const list = bookings.filter((b) =>
       range === "today"
         ? b.booking_date === today
@@ -72,7 +74,7 @@ export default function BookingsBoard({
           : b.booking_date < today && b.booking_date >= addDays(today, -30)
     );
     return range === "past" ? [...list].reverse() : list;
-  }, [bookings, range, today]);
+  }, [bookings, range, today, query]);
 
   const counts = useMemo(
     () => ({
@@ -87,7 +89,7 @@ export default function BookingsBoard({
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const digits = q.replace(/\D/g, "");
+    const digits = q.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
     return inRange.filter((b) => {
       if (statusFilter === "attention" && !needsAttention(b)) return false;
       if (statusFilter !== "all" && statusFilter !== "attention" && b.status !== statusFilter) return false;
@@ -143,7 +145,7 @@ export default function BookingsBoard({
             <input
               value={query}
               onChange={(e) => onQuery(e.target.value)}
-              placeholder="Search name, phone, reference…"
+              placeholder="Search mobile number, name, reference…"
               className="w-full rounded-full border border-white/10 bg-black/30 py-2.5 pl-10 pr-9 text-sm text-[#f7f4ee] placeholder:text-[#e8ded2]/35 focus:border-[#c5a880]/60 focus:outline-none"
             />
             {query && (

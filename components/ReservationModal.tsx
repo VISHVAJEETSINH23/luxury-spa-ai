@@ -19,6 +19,7 @@ import {
   fetchFullSlots,
   fetchPaymentOptions,
   openCheckout,
+  rememberBooking,
   verifyPayment,
   type CheckoutDetails,
 } from "@/lib/bookings";
@@ -338,6 +339,7 @@ export default function ReservationModal({ isOpen, onClose, initialExperience, i
         return;
       }
 
+      rememberBooking(result.reference, guestPhone);
       if (result.payment) await payNow(result.reference, result.payment);
       else setOutcome({ kind: "requested", reference: result.reference });
     } finally {
@@ -454,9 +456,9 @@ export default function ReservationModal({ isOpen, onClose, initialExperience, i
               </p>
               {outcome.kind !== "unpaid" && (
                 <p className="font-sans text-sm text-[#e8ded2]/55">
-                  Check or cancel it any time at{" "}
-                  <a href={`/booking?ref=${outcome.reference}`} target="_blank" className="text-[#c5a880] underline underline-offset-4">
-                    Manage booking
+                  Need to cancel? Tap <span className="text-[#c5a880]">My Booking</span> at the top of the site any time, or{" "}
+                  <a href={`/booking?ref=${outcome.reference}`} className="text-[#c5a880] underline underline-offset-4">
+                    open it now
                   </a>
                   .
                 </p>
