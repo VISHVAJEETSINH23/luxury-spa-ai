@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import NextImage from "next/image";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
@@ -395,35 +396,36 @@ export default function CinematicHero({
         if (isMounted) setIsLoading(false);
       }, 200);
 
-      // Phase 2: Milestone Anchor Keyframes (Every 8th frame across the entire 840 timeline)
-      // This guarantees immediate visual coverage across the whole scroll timeline
-      const step = isMobile ? 8 : 6;
+      // Phase 2: Milestone Anchor Keyframes (Lightweight on mobile to avoid network choke)
+      const step = isMobile ? 32 : 6;
       for (let i = initialBootFrames; i < TOTAL_FRAMES; i += step) {
         loadSingleImage(i);
       }
 
-      // Lenis Smooth Scroll Setup optimized for Mobile Touch (4 clean swipes to completion)
-      const lenis = new Lenis({
-        duration: isTouch ? 0.75 : 1.3,
-        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-        orientation: "vertical",
-        gestureOrientation: "vertical",
-        smoothWheel: true,
-        wheelMultiplier: 0.85,
-        touchMultiplier: isTouch ? 1.6 : 1.2,
-        // Forms, dialogs and chat panels scroll natively — no glide or drag.
-        prevent: (node) => !!node.closest?.("form, [role='dialog'], [aria-modal='true'], [data-lenis-prevent]"),
-      });
-      lenisRef.current = lenis;
-      window.__lenis = lenis;
+      // Smooth Scroll Setup: Native 120Hz GPU touch physics on mobile, Lenis on desktop
+      if (!isTouch) {
+        const lenis = new Lenis({
+          duration: 1.3,
+          easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+          orientation: "vertical",
+          gestureOrientation: "vertical",
+          smoothWheel: true,
+          wheelMultiplier: 0.85,
+          prevent: (node) => !!node.closest?.("form, [role='dialog'], [aria-modal='true'], [data-lenis-prevent]"),
+        });
+        lenisRef.current = lenis;
+        window.__lenis = lenis;
 
-      lenis.on("scroll", ScrollTrigger.update);
+        lenis.on("scroll", ScrollTrigger.update);
 
-      const updateTicker = (time: number) => {
-        lenis.raf(time * 1000);
-      };
-      gsap.ticker.add(updateTicker);
-      gsap.ticker.lagSmoothing(0);
+        const updateTicker = (time: number) => {
+          lenis.raf(time * 1000);
+        };
+        gsap.ticker.add(updateTicker);
+        gsap.ticker.lagSmoothing(0);
+      } else {
+        window.addEventListener("scroll", ScrollTrigger.update, { passive: true });
+      }
 
       let lastRenderedFrame = -1;
       let lastRenderedMouseX = 9999;
@@ -477,10 +479,10 @@ export default function CinematicHero({
       const st = ScrollTrigger.create({
         trigger: containerRef.current,
         start: "top top",
-        end: isTouch ? "+=240%" : "+=360%",
+        end: isTouch ? "+=180%" : "+=360%",
         pin: viewportRef.current,
         pinSpacing: true,
-        scrub: isTouch ? 0.3 : 0.6,
+        scrub: isTouch ? 0.2 : 0.6,
         anticipatePin: 1,
         fastScrollEnd: true,
         onUpdate: (self) => {
@@ -594,6 +596,8 @@ export default function CinematicHero({
       window.removeEventListener("resize", resizeCanvas);
       if (!isTouch) {
         window.removeEventListener("mousemove", handleMouseMove);
+      } else {
+        window.removeEventListener("scroll", ScrollTrigger.update);
       }
       if (audioInstanceRef.current) audioInstanceRef.current.pause();
       if (lenisRef.current) lenisRef.current.destroy();
@@ -646,10 +650,23 @@ export default function CinematicHero({
         ref={viewportRef}
         className="relative w-screen h-screen h-[100dvh] overflow-hidden bg-[#07090b] flex items-center justify-center select-none"
       >
+        {/* Instant Luxury Foundation: Always rendered, zero delay, never goes black */}
+        <div className="absolute inset-0 z-0">
+          <NextImage
+            src="/images/suite-panoramic-luxury.jpg"
+            alt="Alexa Salon & Spa Sangli Karad"
+            fill
+            priority
+            sizes="100vw"
+            quality={85}
+            className="object-cover object-center filter brightness-[0.72] contrast-[1.08]"
+          />
+        </div>
+
         {/* Liquid Sub-Frame Interpolated Retina Canvas */}
         <canvas
           ref={canvasRef}
-          className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none block brightness-[1.06] contrast-[1.04]"
+          className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none block brightness-[1.06] contrast-[1.04] z-10"
           id="alexa-cinematic-canvas"
         />
 

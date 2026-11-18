@@ -309,6 +309,12 @@ export default function WavyBackground({
     const host = hostRef.current;
     if (!canvas || !host || typeof window === "undefined") return;
 
+    // Mobile / Touch Optimization: Skip heavy WebGL noise shader on mobile to guarantee 120fps hardware scrolling
+    const isTouch = window.innerWidth < 768 || ("ontouchstart" in window && navigator.maxTouchPoints > 0);
+    if (isTouch) {
+      return;
+    }
+
     const fsSource = buildFragmentShader(toRamp(getPalette(paletteId)));
 
     const gl = canvas.getContext("webgl2", { alpha: true });
@@ -449,7 +455,7 @@ export default function WavyBackground({
       <div aria-hidden className="absolute inset-0 pointer-events-none">
         <canvas
           ref={canvasRef}
-          className="sticky top-0 w-full h-screen"
+          className="hidden md:block sticky top-0 w-full h-screen"
           style={{ background: "transparent" }}
         />
       </div>
