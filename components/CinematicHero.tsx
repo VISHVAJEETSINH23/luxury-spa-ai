@@ -77,6 +77,13 @@ const CHAPTERS: ChapterData[] = [
   },
 ];
 
+const CHAPTER_BACKGROUNDS = [
+  "/images/suite-panoramic-luxury.jpg",
+  "/images/ritual-basalt.jpg",
+  "/images/service-couple-suite.jpg",
+  "/images/philosophy-sanctuary.jpg",
+];
+
 interface CinematicHeroProps {
   onOpenMenu?: () => void;
   onOpenReservation?: () => void;
@@ -219,10 +226,11 @@ export default function CinematicHero({
   // Ultra-Smooth Sub-Frame Renderer with Mobile Zero-Stutter Pipeline
   const renderSmoothFrame = useCallback(
     (exactFloatFrame: number, mouseOffsetX: number, mouseOffsetY: number) => {
+      if (isMobileRef.current) return;
       const canvas = canvasRef.current;
       if (!canvas) return;
 
-      const ctx = canvas.getContext("2d", { alpha: false });
+      const ctx = canvas.getContext("2d", { alpha: true });
       if (!ctx) return;
 
       const clampedFrame = Math.max(0, Math.min(TOTAL_FRAMES - 1, exactFloatFrame));
@@ -231,19 +239,17 @@ export default function CinematicHero({
       const blendAlpha = clampedFrame - floorIndex;
 
       const dpr = typeof window !== "undefined"
-        ? Math.min(window.devicePixelRatio || 1, isMobileRef.current ? 1.5 : 2.0)
+        ? Math.min(window.devicePixelRatio || 1, 2.0)
         : 1;
       const w = canvas.width / dpr;
       const h = canvas.height / dpr;
 
-      const isMobile = isMobileRef.current;
-
-      // On mobile or when blendAlpha is near 0/1, do single direct draw for maximum GPU efficiency
-      if (isMobile || blendAlpha < 0.08 || blendAlpha > 0.92) {
+      // When blendAlpha is near 0/1, do single direct draw for maximum GPU efficiency
+      if (blendAlpha < 0.08 || blendAlpha > 0.92) {
         const targetIdx = blendAlpha > 0.5 ? ceilIndex : floorIndex;
         const img = getBestAvailableImage(targetIdx);
         if (img) {
-          drawScaledImage(ctx, w, h, img, 1.0, isMobile ? 0 : mouseOffsetX, isMobile ? 0 : mouseOffsetY);
+          drawScaledImage(ctx, w, h, img, 1.0, mouseOffsetX, mouseOffsetY);
         }
         return;
       }
@@ -264,13 +270,16 @@ export default function CinematicHero({
   );
 
   const resizeCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || typeof window === "undefined") return;
+    if (typeof window === "undefined") return;
 
     const isMobile = window.innerWidth < 768 || ("ontouchstart" in window);
     isMobileRef.current = isMobile;
+    if (isMobile) return;
 
-    const dpr = Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2.0);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.0);
     const width = window.innerWidth;
     const height = window.innerHeight;
 
@@ -279,11 +288,11 @@ export default function CinematicHero({
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
 
-    const ctx = canvas.getContext("2d", { alpha: false });
+    const ctx = canvas.getContext("2d", { alpha: true });
     if (ctx) {
       ctx.scale(dpr, dpr);
       ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = isMobile ? "low" : "medium";
+      ctx.imageSmoothingQuality = "medium";
     }
 
     renderSmoothFrame(physicsRef.current.currentFrame, 0, 0);
@@ -335,9 +344,6 @@ export default function CinematicHero({
         const img = new Image();
         img.src = getFramePath(index);
         img.onload = () => {
-          // Store the frame even if this effect run was torn down: the next run
-          // (React re-runs effects in dev) sees it "in flight" and waits for it
-          // here. Gating this on isMounted left the loader stuck at 0% forever.
           imagesRef.current[index] = img;
           if (isMounted) {
             if (!lastRenderedImageRef.current) {
@@ -358,10 +364,10 @@ export default function CinematicHero({
       });
     };
 
-    // Priority loader for dynamic scroll window
+    // Priority loader for dynamic scroll window (desktop only)
     const prioritizeWindow = (centerFrame: number) => {
-      if (!isMounted) return;
-      const windowRadius = isMobile ? 12 : 24;
+      if (!isMounted || isMobileRef.current) return;
+      const windowRadius = 24;
       const start = Math.max(0, Math.floor(centerFrame - 6));
       const end = Math.min(TOTAL_FRAMES, Math.ceil(centerFrame + windowRadius));
       for (let i = start; i < end; i++) {
@@ -371,224 +377,230 @@ export default function CinematicHero({
       }
     };
 
-    // Phase 1: Fast initial boot (first 18 critical frames)
-    const initialBootFrames = 18;
-    let bootCount = 0;
-    const bootPromises = [];
-    for (let i = 0; i < initialBootFrames; i++) {
-      bootPromises.push(
-        loadSingleImage(i).then(() => {
-          bootCount++;
-          if (isMounted) {
-            setLoadProgress(Math.round((bootCount / initialBootFrames) * 100));
-          }
-        })
-      );
+    // Smooth Scroll Setup: Native 120Hz GPU touch physics on mobile, Lenis on desktop
+    if (!isTouch) {
+      const lenis = new Lenis({
+        duration: 1.3,
+        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        orientation: "vertical",
+        gestureOrientation: "vertical",
+        smoothWheel: true,
+        wheelMultiplier: 0.85,
+        prevent: (node) => !!node.closest?.("form, [role='dialog'], [aria-modal='true'], [data-lenis-prevent]"),
+      });
+      lenisRef.current = lenis;
+      window.__lenis = lenis;
+
+      lenis.on("scroll", ScrollTrigger.update);
+
+      const updateTicker = (time: number) => {
+        lenis.raf(time * 1000);
+      };
+      gsap.ticker.add(updateTicker);
+      gsap.ticker.lagSmoothing(0);
+    } else {
+      window.addEventListener("scroll", ScrollTrigger.update, { passive: true });
     }
 
-    Promise.all(bootPromises).then(() => {
+    let lastRenderedFrame = -1;
+    let lastRenderedMouseX = 9999;
+    let lastRenderedMouseY = 9999;
+    let isHeroVisible = true;
+
+    const heroObserver = new IntersectionObserver(
+      ([entry]) => {
+        isHeroVisible = entry.isIntersecting;
+      },
+      { rootMargin: "100px" }
+    );
+    if (containerRef.current) {
+      heroObserver.observe(containerRef.current);
+    }
+
+    const liquidLoop = () => {
       if (!isMounted) return;
 
-      resizeCanvas();
-      renderSmoothFrame(0, 0, 0);
+      if (isHeroVisible && !isMobileRef.current) {
+        const p = physicsRef.current;
+        const frameDelta = p.targetFrame - p.currentFrame;
+        const mouseXDelta = p.targetMouseX - p.mouseX;
+        const mouseYDelta = p.targetMouseY - p.mouseY;
 
-      setTimeout(() => {
-        if (isMounted) setIsLoading(false);
-      }, 200);
+        p.currentFrame += frameDelta * 0.18;
+        p.mouseX += mouseXDelta * 0.08;
+        p.mouseY += mouseYDelta * 0.08;
 
-      // Phase 2: Milestone Anchor Keyframes (Lightweight on mobile to avoid network choke)
-      const step = isMobile ? 32 : 6;
-      for (let i = initialBootFrames; i < TOTAL_FRAMES; i += step) {
-        loadSingleImage(i);
+        const isFrameDiff = Math.abs(p.currentFrame - lastRenderedFrame) > 0.015;
+        const isMouseDiff =
+          Math.abs(p.mouseX - lastRenderedMouseX) > 0.1 ||
+          Math.abs(p.mouseY - lastRenderedMouseY) > 0.1;
+
+        if (isFrameDiff || isMouseDiff) {
+          renderSmoothFrame(p.currentFrame, p.mouseX, p.mouseY);
+          lastRenderedFrame = p.currentFrame;
+          lastRenderedMouseX = p.mouseX;
+          lastRenderedMouseY = p.mouseY;
+        }
       }
 
-      // Smooth Scroll Setup: Native 120Hz GPU touch physics on mobile, Lenis on desktop
-      if (!isTouch) {
-        const lenis = new Lenis({
-          duration: 1.3,
-          easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-          orientation: "vertical",
-          gestureOrientation: "vertical",
-          smoothWheel: true,
-          wheelMultiplier: 0.85,
-          prevent: (node) => !!node.closest?.("form, [role='dialog'], [aria-modal='true'], [data-lenis-prevent]"),
+      if (!isMobileRef.current) {
+        rafId = requestAnimationFrame(liquidLoop);
+      }
+    };
+
+    // Fast, engaging 4-swipe hero journey - registered immediately on all devices
+    const st = ScrollTrigger.create({
+      trigger: containerRef.current,
+      start: "top top",
+      end: isTouch ? "+=180%" : "+=360%",
+      pin: viewportRef.current,
+      pinSpacing: true,
+      scrub: isTouch ? 0.2 : 0.6,
+      anticipatePin: 1,
+      fastScrollEnd: true,
+      onUpdate: (self) => {
+        const progress = self.progress;
+        const targetFrame = Math.min(TOTAL_FRAMES - 1, progress * (TOTAL_FRAMES - 1));
+
+        physicsRef.current.targetFrame = targetFrame;
+        setCurrentProgress(progress);
+        if (onProgressUpdate) {
+          onProgressUpdate(progress);
+        }
+
+        if (!isMobileRef.current) {
+          prioritizeWindow(targetFrame);
+        }
+
+        if (audioInstanceRef.current && !audioInstanceRef.current.paused) {
+          const targetAudioTime = progress * DURATION_SECONDS;
+          if (Math.abs(audioInstanceRef.current.currentTime - targetAudioTime) > 3.0) {
+            audioInstanceRef.current.currentTime = targetAudioTime;
+          }
+        }
+
+        if (introOverlayRef.current) {
+          const introOpacity = Math.max(0, 1 - progress * 14);
+          const introY = -progress * 80;
+          const introScale = 1 - progress * 0.08;
+          gsap.set(introOverlayRef.current, {
+            opacity: introOpacity,
+            y: introY,
+            scale: introScale,
+            pointerEvents: introOpacity > 0.1 ? "auto" : "none",
+          });
+        }
+
+        if (scrollIndicatorRef.current) {
+          const scrollOpacity = Math.max(0, 1 - progress * 18);
+          gsap.set(scrollIndicatorRef.current, {
+            opacity: scrollOpacity,
+            pointerEvents: "none",
+          });
+        }
+
+        CHAPTERS.forEach((ch, idx) => {
+          const el = chapterRefs.current[idx];
+          if (!el) return;
+
+          let opacity = 0;
+          let translateY = 25;
+          let scale = 0.98;
+
+          if (progress >= ch.startProgress && progress <= ch.endProgress) {
+            if (progress < ch.peakProgress) {
+              const t = (progress - ch.startProgress) / (ch.peakProgress - ch.startProgress);
+              opacity = gsap.parseEase("power2.out")(t);
+              translateY = (1 - t) * 25;
+              scale = 0.98 + t * 0.02;
+            } else {
+              const t = (progress - ch.peakProgress) / (ch.endProgress - ch.peakProgress);
+              opacity = 1 - gsap.parseEase("power2.in")(t);
+              translateY = -t * 20;
+              scale = 1 - t * 0.02;
+            }
+
+            setActiveChapterIndex(idx);
+            setCurrentChapterTitle(ch.tagline);
+          }
+
+          gsap.set(el, {
+            opacity: Math.max(0, Math.min(1, opacity)),
+            y: translateY,
+            scale: scale,
+            pointerEvents: opacity > 0.4 ? "auto" : "none",
+          });
         });
-        lenisRef.current = lenis;
-        window.__lenis = lenis;
+      },
+    });
 
-        lenis.on("scroll", ScrollTrigger.update);
+    ScrollTrigger.refresh();
 
-        const updateTicker = (time: number) => {
-          lenis.raf(time * 1000);
-        };
-        gsap.ticker.add(updateTicker);
-        gsap.ticker.lagSmoothing(0);
-      } else {
-        window.addEventListener("scroll", ScrollTrigger.update, { passive: true });
+    // Mobile is instantly unlocked - zero delay, zero 840-frame network choke
+    if (isMobile) {
+      setIsLoading(false);
+      setLoadProgress(100);
+    } else {
+      // Desktop: Phase 1 Fast initial boot (first 18 critical frames)
+      const initialBootFrames = 18;
+      let bootCount = 0;
+      const bootPromises = [];
+      for (let i = 0; i < initialBootFrames; i++) {
+        bootPromises.push(
+          loadSingleImage(i).then(() => {
+            bootCount++;
+            if (isMounted) {
+              setLoadProgress(Math.round((bootCount / initialBootFrames) * 100));
+            }
+          })
+        );
       }
 
-      let lastRenderedFrame = -1;
-      let lastRenderedMouseX = 9999;
-      let lastRenderedMouseY = 9999;
-      let isHeroVisible = true;
-
-      const heroObserver = new IntersectionObserver(
-        ([entry]) => {
-          isHeroVisible = entry.isIntersecting;
-        },
-        { rootMargin: "100px" }
-      );
-      if (containerRef.current) {
-        heroObserver.observe(containerRef.current);
-      }
-
-      const liquidLoop = () => {
+      Promise.all(bootPromises).then(() => {
         if (!isMounted) return;
 
-        if (isHeroVisible) {
-          const p = physicsRef.current;
-          const frameDelta = p.targetFrame - p.currentFrame;
-          const mouseXDelta = p.targetMouseX - p.mouseX;
-          const mouseYDelta = p.targetMouseY - p.mouseY;
+        resizeCanvas();
+        renderSmoothFrame(0, 0, 0);
 
-          // Responsive interpolation factor (faster response on mobile)
-          const interpRate = isMobile ? 0.32 : 0.18;
-          p.currentFrame += frameDelta * interpRate;
-          p.mouseX += mouseXDelta * 0.08;
-          p.mouseY += mouseYDelta * 0.08;
-
-          const isFrameDiff = Math.abs(p.currentFrame - lastRenderedFrame) > (isMobile ? 0.04 : 0.015);
-          const isMouseDiff =
-            !isMobile &&
-            (Math.abs(p.mouseX - lastRenderedMouseX) > 0.1 ||
-              Math.abs(p.mouseY - lastRenderedMouseY) > 0.1);
-
-          if (isFrameDiff || isMouseDiff) {
-            renderSmoothFrame(p.currentFrame, p.mouseX, p.mouseY);
-            lastRenderedFrame = p.currentFrame;
-            lastRenderedMouseX = p.mouseX;
-            lastRenderedMouseY = p.mouseY;
-          }
-        }
+        setTimeout(() => {
+          if (isMounted) setIsLoading(false);
+        }, 200);
 
         rafId = requestAnimationFrame(liquidLoop);
-      };
-      rafId = requestAnimationFrame(liquidLoop);
 
-      // Fast, engaging 4-swipe hero journey
-      const st = ScrollTrigger.create({
-        trigger: containerRef.current,
-        start: "top top",
-        end: isTouch ? "+=180%" : "+=360%",
-        pin: viewportRef.current,
-        pinSpacing: true,
-        scrub: isTouch ? 0.2 : 0.6,
-        anticipatePin: 1,
-        fastScrollEnd: true,
-        onUpdate: (self) => {
-          const progress = self.progress;
-          const targetFrame = Math.min(TOTAL_FRAMES - 1, progress * (TOTAL_FRAMES - 1));
-
-          physicsRef.current.targetFrame = targetFrame;
-          setCurrentProgress(progress);
-          if (onProgressUpdate) {
-            onProgressUpdate(progress);
-          }
-
-          // Prioritize stream window around current scroll frame
-          prioritizeWindow(targetFrame);
-
-          if (audioInstanceRef.current && !audioInstanceRef.current.paused) {
-            const targetAudioTime = progress * DURATION_SECONDS;
-            if (Math.abs(audioInstanceRef.current.currentTime - targetAudioTime) > 3.0) {
-              audioInstanceRef.current.currentTime = targetAudioTime;
-            }
-          }
-
-          if (introOverlayRef.current) {
-            const introOpacity = Math.max(0, 1 - progress * 14);
-            const introY = -progress * 80;
-            const introScale = 1 - progress * 0.08;
-            gsap.set(introOverlayRef.current, {
-              opacity: introOpacity,
-              y: introY,
-              scale: introScale,
-              pointerEvents: introOpacity > 0.1 ? "auto" : "none",
-            });
-          }
-
-          if (scrollIndicatorRef.current) {
-            const scrollOpacity = Math.max(0, 1 - progress * 18);
-            gsap.set(scrollIndicatorRef.current, {
-              opacity: scrollOpacity,
-              pointerEvents: "none",
-            });
-          }
-
-          CHAPTERS.forEach((ch, idx) => {
-            const el = chapterRefs.current[idx];
-            if (!el) return;
-
-            let opacity = 0;
-            let translateY = 25;
-            let scale = 0.98;
-
-            if (progress >= ch.startProgress && progress <= ch.endProgress) {
-              if (progress < ch.peakProgress) {
-                const t = (progress - ch.startProgress) / (ch.peakProgress - ch.startProgress);
-                opacity = gsap.parseEase("power2.out")(t);
-                translateY = (1 - t) * 25;
-                scale = 0.98 + t * 0.02;
-              } else {
-                const t = (progress - ch.peakProgress) / (ch.endProgress - ch.peakProgress);
-                opacity = 1 - gsap.parseEase("power2.in")(t);
-                translateY = -t * 20;
-                scale = 1 - t * 0.02;
-              }
-
-              setActiveChapterIndex(idx);
-              setCurrentChapterTitle(ch.tagline);
-            }
-
-            gsap.set(el, {
-              opacity: Math.max(0, Math.min(1, opacity)),
-              y: translateY,
-              scale: scale,
-              pointerEvents: opacity > 0.4 ? "auto" : "none",
-            });
-          });
-        },
-      });
-
-      ScrollTrigger.refresh();
-
-      // Phase 3: Background progressive fill for remaining frames during idle time
-      let backgroundIdx = 0;
-      const CHUNK_SIZE = isMobile ? 8 : 16;
-
-      const loadNextChunk = () => {
-        if (!isMounted || backgroundIdx >= TOTAL_FRAMES) return;
-
-        const promises = [];
-        const end = Math.min(backgroundIdx + CHUNK_SIZE, TOTAL_FRAMES);
-        for (let i = backgroundIdx; i < end; i++) {
-          if (!imagesRef.current[i] && !loadingStatusRef.current[i]) {
-            promises.push(loadSingleImage(i));
-          }
+        // Phase 2: Milestone Anchor Keyframes
+        for (let i = initialBootFrames; i < TOTAL_FRAMES; i += 6) {
+          loadSingleImage(i);
         }
 
-        Promise.all(promises).finally(() => {
-          backgroundIdx = end;
-          if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-            (window as any).requestIdleCallback(loadNextChunk, { timeout: 600 });
-          } else {
-            setTimeout(loadNextChunk, isMobile ? 120 : 60);
-          }
-        });
-      };
+        // Phase 3: Background progressive fill for remaining frames during idle time
+        let backgroundIdx = 0;
+        const CHUNK_SIZE = 16;
 
-      setTimeout(loadNextChunk, 800);
-    });
+        const loadNextChunk = () => {
+          if (!isMounted || backgroundIdx >= TOTAL_FRAMES) return;
+
+          const promises = [];
+          const end = Math.min(backgroundIdx + CHUNK_SIZE, TOTAL_FRAMES);
+          for (let i = backgroundIdx; i < end; i++) {
+            if (!imagesRef.current[i] && !loadingStatusRef.current[i]) {
+              promises.push(loadSingleImage(i));
+            }
+          }
+
+          Promise.all(promises).finally(() => {
+            backgroundIdx = end;
+            if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+              (window as any).requestIdleCallback(loadNextChunk, { timeout: 600 });
+            } else {
+              setTimeout(loadNextChunk, 60);
+            }
+          });
+        };
+
+        setTimeout(loadNextChunk, 800);
+      });
+    }
 
     return () => {
       isMounted = false;
@@ -650,28 +662,39 @@ export default function CinematicHero({
         ref={viewportRef}
         className="relative w-screen h-screen h-[100dvh] overflow-hidden bg-[#07090b] flex items-center justify-center select-none"
       >
-        {/* Instant Luxury Foundation: Always rendered, zero delay, never goes black */}
-        <div className="absolute inset-0 z-0">
-          <NextImage
-            src="/images/suite-panoramic-luxury.jpg"
-            alt="Alexa Salon & Spa Sangli Karad"
-            fill
-            priority
-            sizes="100vw"
-            quality={85}
-            className="object-cover object-center filter brightness-[0.72] contrast-[1.08]"
-          />
+        {/* Instant Luxury Foundation:
+            Stacked chapter images cross-fade smoothly on mobile based on activeChapterIndex.
+            Zero canvas bottleneck, instant visual response, 100% synchronized with chapter sentences. */}
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          {CHAPTER_BACKGROUNDS.map((bgSrc, idx) => (
+            <div
+              key={bgSrc}
+              className={`absolute inset-0 transition-all duration-700 ease-in-out ${
+                activeChapterIndex === idx ? "opacity-100 scale-100" : "opacity-0 scale-105"
+              }`}
+            >
+              <NextImage
+                src={bgSrc}
+                alt="Alexa Luxury Sanctuary"
+                fill
+                priority={idx === 0}
+                sizes="100vw"
+                quality={85}
+                className="object-cover object-center filter brightness-[0.92] contrast-[1.06] saturate-[1.10]"
+              />
+            </div>
+          ))}
         </div>
 
-        {/* Liquid Sub-Frame Interpolated Retina Canvas */}
+        {/* Liquid Sub-Frame Interpolated Retina Canvas - Hidden on mobile, active on desktop */}
         <canvas
           ref={canvasRef}
-          className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none block brightness-[1.06] contrast-[1.04] z-10"
+          className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none hidden md:block brightness-[1.06] contrast-[1.04] z-10"
           id="alexa-cinematic-canvas"
         />
 
-        {/* Soft, luminous cinematic vignette */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#07090b]/40 via-transparent to-[#07090b]/20 pointer-events-none" />
+        {/* Soft, luminous luxury vignette overlay: Ensures crisp text contrast without darkening the background image */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#07090b]/70 via-black/15 to-[#07090b]/85 pointer-events-none z-10" />
 
         {/* 
           ======================================================================
