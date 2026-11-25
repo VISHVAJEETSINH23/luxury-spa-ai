@@ -286,6 +286,7 @@ export default function WavyBackground({
   // speed only scales the clock, so it rides in a ref and needs no rebuild.
   const [paletteId, setPaletteId] = useState<string>(() => readPaletteId());
   const speedRef = useRef<number>(readSpeed());
+  const activePalette = getPalette(paletteId);
 
   useEffect(() => {
     // localStorage is off-limits until hydration, so the first paint uses the
@@ -309,17 +310,15 @@ export default function WavyBackground({
     const host = hostRef.current;
     if (!canvas || !host || typeof window === "undefined") return;
 
-    // Mobile / Touch Optimization: Skip heavy WebGL noise shader on mobile to guarantee 120fps hardware scrolling
-    const isTouch = window.innerWidth < 768 || ("ontouchstart" in window && navigator.maxTouchPoints > 0);
-    if (isTouch) {
-      return;
-    }
-
     const fsSource = buildFragmentShader(toRamp(getPalette(paletteId)));
 
-    const gl = canvas.getContext("webgl2", { alpha: true });
+    const gl = canvas.getContext("webgl2", {
+      alpha: true,
+      antialias: false,
+      powerPreference: "low-power",
+    });
     if (!gl) {
-      console.error("WebGL2 is not supported by your browser.");
+      console.warn("WebGL2 is not supported, using ambient CSS wash.");
       return;
     }
 
@@ -336,12 +335,19 @@ export default function WavyBackground({
     // Transparent background
     gl.clearColor(0, 0, 0, 0);
 
-    // Scaled canvas buffer for silky 60/120fps performance
+    // Scaled canvas buffer for silky 60/120fps performance across mobile & desktop
     const updateCanvasSize = () => {
-      const scale = Math.min(window.devicePixelRatio > 1 ? 0.6 : 0.8, 1);
-      canvas.width = Math.max(320, Math.round(window.innerWidth * scale));
-      canvas.height = Math.max(240, Math.round(window.innerHeight * scale));
-      gl.viewport(0, 0, canvas.width, canvas.height);
+      const isTouch =
+        typeof window !== "undefined" &&
+        (window.innerWidth < 768 || ("ontouchstart" in window && navigator.maxTouchPoints > 0));
+      const scale = isTouch ? 0.35 : (window.devicePixelRatio > 1 ? 0.6 : 0.8);
+      const w = Math.max(240, Math.round(window.innerWidth * scale));
+      const h = Math.max(240, Math.round(window.innerHeight * scale));
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+        gl.viewport(0, 0, canvas.width, canvas.height);
+      }
     };
     updateCanvasSize();
 
@@ -453,11 +459,21 @@ export default function WavyBackground({
           Note: no `overflow-hidden` on the host — that would make it a scroll
           container and kill the sticky. */}
       <div aria-hidden className="absolute inset-0 pointer-events-none">
-        <canvas
-          ref={canvasRef}
-          className="hidden md:block sticky top-0 w-full h-screen"
-          style={{ background: "transparent" }}
-        />
+        <div className="sticky top-0 w-full h-screen overflow-hidden">
+          {/* Dynamic Ambient Background Glow that responds instantly to palette selection */}
+          <div
+            className="absolute inset-0 transition-all duration-700 ease-out"
+            style={{
+              background: `radial-gradient(ellipse 95% 75% at 50% 20%, ${activePalette.chip}45 0%, ${activePalette.chip}18 50%, transparent 85%)`,
+            }}
+          />
+          {/* Live WebGL2 Wave Canvas for hardware-accelerated fluid motion on all devices */}
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 w-full h-full block"
+            style={{ background: "transparent" }}
+          />
+        </div>
       </div>
 
       {children}
