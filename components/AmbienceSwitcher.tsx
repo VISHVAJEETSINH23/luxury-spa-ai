@@ -56,9 +56,9 @@ export default function AmbienceSwitcher() {
   };
 
   return (
-    <div ref={panelRef} className="fixed bottom-6 left-6 z-40 select-none">
+    <div ref={panelRef} className="fixed bottom-5 left-4 sm:bottom-6 sm:left-6 z-40 select-none">
       {isOpen && (
-        <div className="absolute bottom-14 left-0 w-72 rounded-2xl border border-[#c5a880]/25 bg-[#0b0f12]/95 backdrop-blur-2xl p-4 shadow-2xl space-y-4 animate-fadeIn">
+        <div className="absolute bottom-14 left-0 w-[calc(100vw-2rem)] max-w-[288px] sm:w-72 rounded-2xl border border-[#c5a880]/25 bg-[#0b0f12]/95 backdrop-blur-2xl p-4 shadow-2xl space-y-4 animate-fadeIn">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-mono uppercase tracking-[0.24em] text-[#c5a880]">
               Ambience
